@@ -32,7 +32,7 @@ import { elapsedText, formatDoctorReport, formatQueueReport, formatTaskReport } 
 import { MAX_OUTBOX_MESSAGES, outboxEntryDue, outboxRetryDelay } from './outbox.js'
 import { sendToAuthorizedUser } from './outbound-send.js'
 import { DEFAULT_CREDENTIAL_REF, PLUGIN_NAME, SESSION_ID_PREFIX } from './constants.js'
-import { registerWxSendTool } from './tool-wx-send.js'
+import { toLosslessToolOutput } from './tool-output.js'
 import { registerWxConfigureTool } from './tool-wx-configure.js'
 import {
   disconnectPairing,
@@ -248,11 +248,10 @@ export class DshWeixinBridge {
    */
   configurePayload(payload) {
     const accountId = payload.accountId
-    if (accountId == null) {
-      const { accountId: _omit, ...rest } = payload
-      return rest
-    }
-    return payload
+    const normalized = accountId == null
+      ? (({ accountId: _omit, ...rest }) => rest)(payload)
+      : payload
+    return /** @type {typeof payload} */ (toLosslessToolOutput(normalized))
   }
 
   /**

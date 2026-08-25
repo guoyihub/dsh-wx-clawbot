@@ -1,6 +1,6 @@
 {
   "name": "dsh-wx-clawbot",
-  "version": "0.5.7",
+  "version": "0.5.8",
   "license": "MIT",
   "description": "DSH 微信 ClawBot/iLink 插件，支持对话配对与 Agent 工具",
   "author": "zp-home (https://github.com/zp-home)",
@@ -54,7 +54,7 @@
     "disconnect": "node src/setup.js disconnect",
     "setup": "node src/setup.js setup",
     "status": "node src/setup.js status",
-    "check": "node --check src/constants.js && node --check src/index.js && node --check src/control.js && node --check src/protocol.js && node --check src/state.js && node --check src/setup.js && node --check src/credential-file.js && node --check src/agent-reply.js && node --check src/runtime-status.js && node --check src/outbox.js && node --check src/approval.js && node --check src/qr-proxy.js && node --check src/outbound-send.js && node --check src/pairing-service.js && node --check src/tool-wx-send.js && node --check src/tool-wx-configure.js",
+    "check": "node --check src/constants.js && node --check src/index.js && node --check src/control.js && node --check src/protocol.js && node --check src/state.js && node --check src/setup.js && node --check src/credential-file.js && node --check src/agent-reply.js && node --check src/runtime-status.js && node --check src/outbox.js && node --check src/approval.js && node --check src/qr-proxy.js && node --check src/outbound-send.js && node --check src/pairing-service.js && node --check src/tool-output.js && node --check src/tool-wx-send.js && node --check src/tool-wx-configure.js",
     "test": "node --test"
   },
   "engines": {

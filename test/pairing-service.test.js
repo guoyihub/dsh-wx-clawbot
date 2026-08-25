@@ -11,6 +11,7 @@ import {
   resolvePairingOptions,
 } from '../src/pairing-service.js'
 import { StateStore } from '../src/state.js'
+import { isLosslessToolOutput } from '../src/tool-output.js'
 import { credentialsPath } from '../src/credential-file.js'
 
 function createMockClient(sequence) {
@@ -170,6 +171,8 @@ test('DshWeixinBridge configure reports status and rejects unknown actions', asy
   const status = await bridge.configure({ action: 'status' })
   assert.equal(status.paired, false)
   assert.match(status.message, /尚未配对/)
+  assert.equal('ownerUserId' in status, false)
+  assert.equal(isLosslessToolOutput(status), true)
   await assert.rejects(
     () => bridge.configure({ action: 'nope' }),
     /unknown wx_configure action/,

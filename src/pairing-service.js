@@ -93,7 +93,9 @@ export async function readPairingStatus(options) {
       userId,
       maskedUserId: maskUserId(userId),
     })),
-    ownerUserId: state.settings.ownerUserId ?? undefined,
+    ...(typeof state.settings.ownerUserId === 'string' && state.settings.ownerUserId.trim()
+      ? { ownerUserId: state.settings.ownerUserId.trim() }
+      : {}),
     sessionCount: Object.keys(state.peers).length,
     agentCwd: state.settings.agentCwd ?? options.agentCwd,
     agentPreset: state.settings.agentPreset ?? options.agentPreset,
@@ -229,10 +231,10 @@ export class WxPairingSession {
       ...(this.pairingImageUrlMobile ? { pairingImageUrlMobile: this.pairingImageUrlMobile } : {}),
       needsVerifyCode: this.phase === 'need_verify_code',
       paired: this.phase === 'confirmed',
-      terminalQr: this.terminalQr || undefined,
-      liteUrl: this.liteUrl,
+      ...(this.terminalQr ? { terminalQr: this.terminalQr } : {}),
+      ...(this.liteUrl ? { liteUrl: this.liteUrl } : {}),
       ...(this.result?.accountId ? { accountId: this.result.accountId } : {}),
-      error: this.error,
+      ...(typeof this.error === 'string' && this.error ? { error: this.error } : {}),
     }
   }
 

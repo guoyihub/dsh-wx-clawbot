@@ -2,7 +2,7 @@
 
 import { createInterface } from 'node:readline/promises'
 import { stdin, stdout } from 'node:process'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { defaultDshHome } from './credential-file.js'
 import { DEFAULT_QR_PORT, PLUGIN_NAME } from './constants.js'
 import {
@@ -13,7 +13,8 @@ import {
 } from './pairing-service.js'
 
 function parseArgs(argv) {
-  const result = { command: argv[0] || 'help' }
+  const command = argv[0] || 'help'
+  const result = { command }
   for (let index = 1; index < argv.length; index++) {
     const arg = argv[index]
     if (arg === '--state-dir') result.stateDir = argv[++index]
@@ -36,7 +37,7 @@ function parseArgs(argv) {
     )
   }
   if (result.qrFile) result.qrFile = resolve(result.qrFile)
-  return resolvePairingOptions(result)
+  return { ...resolvePairingOptions(result), command: result.command }
 }
 
 function usage() {

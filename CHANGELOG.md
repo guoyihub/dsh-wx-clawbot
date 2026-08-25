@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here.
 
+## 0.5.8 - 2026-08-25
+
+- Fix `wx_configure` invalid output by omitting `undefined` fields (for example
+  `ownerUserId`) so tool results pass DSH lossless JSON validation.
+- Fix CLI `wx-clawbot status` / `disconnect` dropping the subcommand in
+  `parseArgs`.
+
 ## 0.5.7 - 2026-08-25
 
 - Sync paired bot tokens into `ctx.credentials` after `wx_configure` pairing so
