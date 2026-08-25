@@ -219,9 +219,10 @@ export class DshWeixinBridge {
   }
 
   pairingDefaults() {
+    const dshHome = defaultDshHome()
     return {
       stateDir: this.config.stateDir,
-      dshHome: defaultDshHome(),
+      dshHome,
       credentialRef: this.config.credentialRef,
       agentCwd: this.config.agentCwd,
       agentPreset: this.config.agentPreset,

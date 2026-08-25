@@ -1,6 +1,6 @@
 import { createServer } from 'node:http'
 import { networkInterfaces } from 'node:os'
-import { DEFAULT_QR_PORT, MOBILE_PWA_PORT, QR_IMAGE_PATH, QR_PAGE_PATH } from './constants.js'
+import { DEFAULT_QR_PORT, QR_IMAGE_PATH, QR_PAGE_PATH } from './constants.js'
 
 export { QR_IMAGE_PATH, QR_PAGE_PATH }
 
@@ -110,24 +110,14 @@ export class QrProxyServer {
    * @returns {string[]}
    */
   publicUrls(pathname) {
+    if (this.hosted) return [pathname]
     if (this.baseUrl) return [`${this.baseUrl}${pathname}`]
     const lan = listLanIpv4Addresses()
-    const urls = []
-    if (this.hosted) {
-      for (const address of lan) {
-        urls.push(`http://${address}:${MOBILE_PWA_PORT}${pathname}`)
-      }
-      if (!lan.length) {
-        urls.push(`http://127.0.0.1:${MOBILE_PWA_PORT}${pathname}`)
-      }
-    }
+    const urls = [`http://${loopbackAuthority(this.bind, this.port)}${pathname}`]
     for (const address of lan) {
       urls.push(`http://${address}:${this.port}${pathname}`)
     }
-    if (!urls.length) {
-      urls.push(`http://${loopbackAuthority(this.bind, this.port)}${pathname}`)
-    }
-    return urls
+    return [...new Set(urls)]
   }
 
   /**

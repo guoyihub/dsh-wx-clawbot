@@ -10,9 +10,6 @@ export const SESSION_ID_PREFIX = 'wx-clawbot-'
 /** Legacy session prefixes from earlier plugin ids. */
 export const LEGACY_SESSION_ID_PREFIXES = ['weixin-', 'dsh-wx-clawbot-']
 
-/** DSH Mobile PWA dev-server port; `/api` there already proxies to Host. */
-export const MOBILE_PWA_PORT = 8030
-
 /** HTTP path prefix for QR pairing pages (under `/api` so Mobile needs no extra proxy). */
 export const QR_ROUTE_PREFIX = '/api/wx-clawbot'
 

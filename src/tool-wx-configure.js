@@ -46,11 +46,11 @@ export function registerWxConfigureTool(ctx, getBridge) {
       },
       qr_port: {
         type: 'number',
-        description: 'Standalone QR HTTP port for CLI setup only; Host pairing reuses webServer (default 3080) and ignores this.',
+        description: 'Standalone QR HTTP port for CLI setup only; Host pairing reuses the DSH webServer listen port and ignores this.',
       },
       qr_base_url: {
         type: 'string',
-        description: 'Public base URL for QR pages when LAN detection or a tunnel differs.',
+        description: 'CLI setup only: public base URL for standalone QR HTTP when LAN detection or a tunnel differs; Host pairing returns relative paths.',
       },
     },
     output: {

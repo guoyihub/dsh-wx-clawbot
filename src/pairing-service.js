@@ -217,7 +217,7 @@ export class WxPairingSession {
     this.terminalQr = published.terminalQr
     this.liteUrl = published.liteUrl
     this.phase = 'waiting_scan'
-    this.message = '请用手机微信扫描二维码，或在手机浏览器打开配对页；扫码后再次调用 pair_step。'
+    this.message = '请用手机微信扫描二维码，或在当前站点打开 /api/wx-clawbot/pairing；扫码后再次调用 pair_step。'
     return this.snapshot()
   }
 

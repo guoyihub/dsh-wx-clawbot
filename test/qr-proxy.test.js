@@ -27,3 +27,17 @@ test('qr proxy publicUrls prefers configured base url', () => {
   const proxy = new QrProxyServer({ baseUrl: 'http://tunnel.example' })
   assert.deepEqual(proxy.publicUrls(QR_PAGE_PATH), ['http://tunnel.example/api/wx-clawbot/pairing'])
 })
+
+test('qr proxy publicUrls returns relative paths when hosted on webServer', () => {
+  const proxy = new QrProxyServer({
+    webServer: { host: '127.0.0.1', port: 4567, register: () => () => {} },
+  })
+  assert.deepEqual(proxy.publicUrls(QR_PAGE_PATH), [QR_PAGE_PATH])
+  assert.deepEqual(proxy.publicUrls(QR_IMAGE_PATH), [QR_IMAGE_PATH])
+})
+
+test('qr proxy publicUrls builds absolute urls for standalone server', () => {
+  const proxy = new QrProxyServer({ port: 3081, bind: '127.0.0.1' })
+  const urls = proxy.publicUrls(QR_PAGE_PATH)
+  assert.ok(urls.some(url => url === 'http://127.0.0.1:3081/api/wx-clawbot/pairing'))
+})

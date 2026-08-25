@@ -100,13 +100,17 @@ Agent 调用内置工具 **`wx_configure`** 自动完成：
 | 步骤 | 工具动作 | 说明 |
 |------|----------|------|
 | 1 | `status` | 检查是否已配对 |
-| 2 | `start_pairing` | 生成二维码与配对页 URL（默认 `:3081`） |
+| 2 | `start_pairing` | 生成二维码与配对页路径（Host 模式为相对路径；CLI 独立模式为 `:3081` 绝对 URL） |
 | 3 | `pair_step` | 轮询扫码进度；若需数字码则传入 `verify_code` |
 | 4 | 完成 | 凭据写入 `$DSH_HOME/.credentials.yaml`，通道自动激活 |
 
-配对页示例（Host）：`http://<电脑局域网IP>:3080/api/wx-clawbot/pairing`
+配对页路径：`/api/wx-clawbot/pairing`（Host 内嵌模式下工具输出为**相对路径**，在当前 DSH 站点打开即可；PC `localhost:3080` 与手机隧道 `https://dshmobilexxxxx` 各自解析到同一 Host 路由）。
 
-Mobile PWA 开发态（`:8030` 已反代 `/api`，**无需改 mobile 代码**）：`http://<电脑局域网IP>:8030/api/wx-clawbot/pairing`
+| 访问方式 | 打开方式 |
+|----------|----------|
+| 本机 PC（Host 对话） | 在当前页打开 `/api/wx-clawbot/pairing` |
+| 手机（Mobile PWA / 隧道） | 在同一域名下打开 `/api/wx-clawbot/pairing` |
+| CLI 独立 `wx-clawbot setup` | 终端输出的 `http://<host>:3081/api/wx-clawbot/pairing` 等绝对 URL |
 
 ### 验证
 

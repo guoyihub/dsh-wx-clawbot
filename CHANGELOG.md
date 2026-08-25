@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented here.
 
+## 0.5.5 - 2026-08-25
+
+- Host `wx_configure` pairing returns relative paths (`/api/wx-clawbot/pairing`) so
+  PC and Mobile resolve against the current site origin; CLI `wx-clawbot setup`
+  still emits absolute LAN URLs on `:3081`.
+
+## 0.5.4 - 2026-08-25
+
+- Build pairing page URLs from the live DSH `webServer` listen port instead of
+  assuming `:3080`.
+- When DSH Mobile pairing settings define `mobilePublicBaseUrl` (tunnel / public
+  origin), prefer `https://…/api/wx-clawbot/pairing` for phone access.
+
 ## 0.5.3 - 2026-08-25
 
 - Serve pairing routes under `/api/wx-clawbot/*` so DSH Mobile PWA's existing
