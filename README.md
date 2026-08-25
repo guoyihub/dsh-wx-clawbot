@@ -104,7 +104,9 @@ Agent 调用内置工具 **`wx_configure`** 自动完成：
 | 3 | `pair_step` | 轮询扫码进度；若需数字码则传入 `verify_code` |
 | 4 | 完成 | 凭据写入 `$DSH_HOME/.credentials.yaml`，通道自动激活 |
 
-配对页示例：`http://<电脑局域网IP>:3081/wx-clawbot/pairing`
+配对页示例（Host）：`http://<电脑局域网IP>:3080/api/wx-clawbot/pairing`
+
+Mobile PWA 开发态（`:8030` 已反代 `/api`，**无需改 mobile 代码**）：`http://<电脑局域网IP>:8030/api/wx-clawbot/pairing`
 
 ### 验证
 

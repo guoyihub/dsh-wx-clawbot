@@ -57,7 +57,9 @@ D:\path\to\wx-clawbot\node_modules\.bin\wx-clawbot.cmd setup --agent-cwd D:\abso
 
 On macOS or Linux, use the equivalent `node_modules/.bin/wx-clawbot` path. The
 command displays the QR in the terminal and serves HTTP pairing URLs on port
-3081 by default (`/wx-clawbot/pairing` and `/wx-clawbot/pairing-qr.png`) so a
+3081 by default (`/api/wx-clawbot/pairing` and `/api/wx-clawbot/pairing-qr.png`) so a
+phone on the LAN can open `http://<host>:8030/api/wx-clawbot/pairing` through
+Mobile PWA's built-in `/api` proxy, or hit Host `:3080` directly.
 phone on the LAN or tunnel can open the image link instead of a local file path.
 Use `--qr-base-url` when the public host differs from the detected LAN address.
 The returned token is stored under `refs:` in `$DSH_HOME/.credentials.yaml`. Do

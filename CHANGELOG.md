@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here.
 
+## 0.5.3 - 2026-08-25
+
+- Serve pairing routes under `/api/wx-clawbot/*` so DSH Mobile PWA's existing
+  `/api` proxy reaches the QR page without any mobile-repo change.
+- Prefer `:8030` LAN URLs when pairing through Host `webServer`.
+
 ## 0.5.2 - 2026-08-25
 
 - Serve Weixin QR pairing through the DSH Host `webServer` (default `:3080`) when

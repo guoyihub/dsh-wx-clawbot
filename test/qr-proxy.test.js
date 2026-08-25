@@ -13,7 +13,7 @@ test('qr proxy serves pairing page and png', async () => {
   assert.equal(page.status, 200)
   const html = await page.text()
   assert.match(html, /DSH 微信配对/)
-  assert.match(html, /http:\/\/phone\.example:8030\/wx-clawbot\/pairing-qr\.png/)
+  assert.match(html, /http:\/\/phone\.example:8030\/api\/wx-clawbot\/pairing-qr\.png/)
 
   const image = await fetch(`http://127.0.0.1:${address.port}${QR_IMAGE_PATH}`)
   assert.equal(image.status, 200)
@@ -25,5 +25,5 @@ test('qr proxy serves pairing page and png', async () => {
 
 test('qr proxy publicUrls prefers configured base url', () => {
   const proxy = new QrProxyServer({ baseUrl: 'http://tunnel.example' })
-  assert.deepEqual(proxy.publicUrls(QR_PAGE_PATH), ['http://tunnel.example/wx-clawbot/pairing'])
+  assert.deepEqual(proxy.publicUrls(QR_PAGE_PATH), ['http://tunnel.example/api/wx-clawbot/pairing'])
 })
