@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here.
 
+## 0.5.1 - 2026-08-25
+
+- Fix tool output schemas for DSH value schema DSL (use per-property `required:
+  true` instead of object-level `required` arrays).
+
 ## 0.5.0 - 2026-08-25
 
 - Add `wx_configure` DSH tool for conversational Weixin bridge setup.

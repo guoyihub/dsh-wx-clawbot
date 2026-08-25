@@ -56,21 +56,26 @@ export function registerWxConfigureTool(ctx, getBridge) {
     output: {
       schema: {
         type: 'object',
+        additionalProperties: true,
         properties: {
-          action: { type: 'string' },
+          action: { type: 'string', required: true },
+          message: { type: 'string', required: true },
           paired: { type: 'boolean' },
           credentialConfigured: { type: 'boolean' },
           pairingActive: { type: 'boolean' },
           phase: { type: 'string' },
           needsVerifyCode: { type: 'boolean' },
-          message: { type: 'string' },
-          pairingPageUrls: { type: 'array', items: { type: 'string' } },
-          pairingImageUrls: { type: 'array', items: { type: 'string' } },
+          pairingPageUrls: {
+            type: 'array',
+            items: { type: 'string' },
+          },
+          pairingImageUrls: {
+            type: 'array',
+            items: { type: 'string' },
+          },
           agentCwd: { type: 'string' },
           accountId: { type: 'string' },
         },
-        required: ['action', 'message'],
-        additionalProperties: true,
       },
       render: (_args, value) => [{
         type: 'text',

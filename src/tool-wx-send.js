@@ -29,13 +29,12 @@ export function registerWxSendTool(ctx, getBridge) {
     output: {
       schema: {
         type: 'object',
-        properties: {
-          sent: { type: 'boolean' },
-          to: { type: 'string' },
-          chunks: { type: 'number' },
-        },
-        required: ['sent', 'to', 'chunks'],
         additionalProperties: false,
+        properties: {
+          sent: { type: 'boolean', required: true },
+          to: { type: 'string', required: true },
+          chunks: { type: 'number', required: true },
+        },
       },
       render: (_args, value) => [{
         type: 'text',
