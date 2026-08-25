@@ -28,12 +28,30 @@ test('qr proxy publicUrls prefers configured base url', () => {
   assert.deepEqual(proxy.publicUrls(QR_PAGE_PATH), ['http://tunnel.example/api/wx-clawbot/pairing'])
 })
 
-test('qr proxy publicUrls returns relative paths when hosted on webServer', () => {
+test('qr proxy publicUrls builds hosted absolute urls from webServer port', () => {
   const proxy = new QrProxyServer({
     webServer: { host: '127.0.0.1', port: 4567, register: () => () => {} },
+    mobilePublicBaseUrl: 'https://dshmobile.example.com',
   })
-  assert.deepEqual(proxy.publicUrls(QR_PAGE_PATH), [QR_PAGE_PATH])
-  assert.deepEqual(proxy.publicUrls(QR_IMAGE_PATH), [QR_IMAGE_PATH])
+  const urls = proxy.publicUrls(QR_PAGE_PATH)
+  assert.equal(urls[0], 'https://dshmobile.example.com/api/wx-clawbot/pairing')
+  assert.ok(urls.some(url => url === 'http://127.0.0.1:4567/api/wx-clawbot/pairing'))
+})
+
+test('pairingUrlFields labels local and mobile urls', async () => {
+  const { pairingUrlFields } = await import('../src/qr-proxy.js')
+  const fields = pairingUrlFields(
+    [
+      'https://dshmobile.example.com/api/wx-clawbot/pairing',
+      'http://127.0.0.1:3080/api/wx-clawbot/pairing',
+    ],
+    [
+      'https://dshmobile.example.com/api/wx-clawbot/pairing-qr.png',
+      'http://127.0.0.1:3080/api/wx-clawbot/pairing-qr.png',
+    ],
+  )
+  assert.equal(fields.pairingPageUrlMobile, 'https://dshmobile.example.com/api/wx-clawbot/pairing')
+  assert.equal(fields.pairingPageUrlLocal, 'http://127.0.0.1:3080/api/wx-clawbot/pairing')
 })
 
 test('qr proxy publicUrls builds absolute urls for standalone server', () => {

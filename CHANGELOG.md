@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here.
 
+## 0.5.6 - 2026-08-25
+
+- Host pairing emits ready-to-open absolute URLs with `pairingPageUrlLocal` and
+  `pairingPageUrlMobile` labels so users never splice a host with a path.
+- Tool card shows `本机打开：` / `手机打开：` lines; `wx_configure` instructs the
+  agent to quote those URLs verbatim.
+
 ## 0.5.5 - 2026-08-25
 
 - Host `wx_configure` pairing returns relative paths (`/api/wx-clawbot/pairing`) so

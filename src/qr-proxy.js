@@ -28,16 +28,50 @@ export function listLanIpv4Addresses() {
  * @param {number} port
  */
 function loopbackAuthority(bindHost, port) {
-  const host = bindHost === '0.0.0.0' ? '127.0.0.1' : bindHost
+  const host = bindHost === '0.0.0.0' || bindHost === '127.0.0.1' ? '127.0.0.1' : bindHost
   return `${host}:${port}`
+}
+
+/**
+ * @param {string} url
+ */
+function isLoopbackUrl(url) {
+  return /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//.test(url)
+}
+
+/**
+ * @param {string} url
+ */
+function isPublicHttpsUrl(url) {
+  return url.startsWith('https://') && !isLoopbackUrl(url)
+}
+
+/**
+ * @param {string[]} pageUrls
+ * @param {string[]} imageUrls
+ */
+export function pairingUrlFields(pageUrls, imageUrls) {
+  const localPage = pageUrls.find(url => isLoopbackUrl(url))
+  const mobilePage = pageUrls.find(url => isPublicHttpsUrl(url))
+  const localImage = imageUrls.find(url => isLoopbackUrl(url))
+  const mobileImage = imageUrls.find(url => isPublicHttpsUrl(url))
+  return {
+    pairingPageUrls: pageUrls,
+    pairingImageUrls: imageUrls,
+    ...(localPage ? { pairingPageUrlLocal: localPage } : {}),
+    ...(mobilePage ? { pairingPageUrlMobile: mobilePage } : {}),
+    ...(localImage ? { pairingImageUrlLocal: localImage } : {}),
+    ...(mobileImage ? { pairingImageUrlMobile: mobileImage } : {}),
+  }
 }
 
 export class QrProxyServer {
   /**
-   * @param {{ port?: number, bind?: string, baseUrl?: string, webServer?: { host: string, port: number, register(route: { kind: 'exact' | 'prefix', path: string, handler: Function }): () => void } }} [options]
+   * @param {{ port?: number, bind?: string, baseUrl?: string, mobilePublicBaseUrl?: string, webServer?: { host: string, port: number, register(route: { kind: 'exact' | 'prefix', path: string, handler: Function }): () => void } }} [options]
    */
   constructor(options = {}) {
     this.webServer = options.webServer
+    this.mobilePublicBaseUrl = options.mobilePublicBaseUrl?.replace(/\/$/, '')
     this.port = options.webServer?.port ?? options.port ?? DEFAULT_QR_PORT
     this.bind = options.webServer?.host ?? options.bind ?? '0.0.0.0'
     this.baseUrl = options.baseUrl?.replace(/\/$/, '')
@@ -110,7 +144,17 @@ export class QrProxyServer {
    * @returns {string[]}
    */
   publicUrls(pathname) {
-    if (this.hosted) return [pathname]
+    if (this.hosted) {
+      const urls = []
+      if (this.mobilePublicBaseUrl) {
+        urls.push(`${this.mobilePublicBaseUrl}${pathname}`)
+      }
+      urls.push(`http://${loopbackAuthority(this.bind, this.port)}${pathname}`)
+      for (const address of listLanIpv4Addresses()) {
+        urls.push(`http://${address}:${this.port}${pathname}`)
+      }
+      return [...new Set(urls)]
+    }
     if (this.baseUrl) return [`${this.baseUrl}${pathname}`]
     const lan = listLanIpv4Addresses()
     const urls = [`http://${loopbackAuthority(this.bind, this.port)}${pathname}`]

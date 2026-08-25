@@ -62,8 +62,9 @@ Use `--qr-base-url` when the public host differs from the detected LAN address.
 The returned token is stored under `refs:` in `$DSH_HOME/.credentials.yaml`. Do
 not expose the QR or token in logs or chat.
 
-When pairing through DSH Host (`wx_configure`), the tool returns relative paths
-(`/api/wx-clawbot/pairing`) that resolve against the current PC or Mobile origin.
+When pairing through DSH Host (`wx_configure`), the tool returns labeled full
+URLs (`pairingPageUrlLocal`, `pairingPageUrlMobile`) ready to open without
+combining a host with a path.
 
 Restart the persistent host after a new install or profile change.
 

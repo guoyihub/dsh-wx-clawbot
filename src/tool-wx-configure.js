@@ -19,7 +19,7 @@ export function registerWxConfigureTool(ctx, getBridge) {
     name: 'wx_configure',
     description: [
       'Configure or inspect the paired Weixin ClawBot bridge without shell commands.',
-      'Typical flow: status → start_pairing (share pairing URLs with the user) → pair_step until paired or needs verify_code → pair_step with verify_code.',
+      'Typical flow: status → start_pairing (give users the labeled full pairing URLs from the tool output; never ask them to combine a host with a path) → pair_step until paired or needs verify_code → pair_step with verify_code.',
       'Use disconnect to remove local pairing; cancel_pairing aborts an in-progress QR session only.',
     ].join(' '),
     parameters: {
@@ -50,7 +50,7 @@ export function registerWxConfigureTool(ctx, getBridge) {
       },
       qr_base_url: {
         type: 'string',
-        description: 'CLI setup only: public base URL for standalone QR HTTP when LAN detection or a tunnel differs; Host pairing returns relative paths.',
+        description: 'CLI setup only: public base URL for standalone QR HTTP when LAN detection or a tunnel differs.',
       },
     },
     output: {
@@ -73,6 +73,10 @@ export function registerWxConfigureTool(ctx, getBridge) {
             type: 'array',
             items: { type: 'string' },
           },
+          pairingPageUrlLocal: { type: 'string' },
+          pairingPageUrlMobile: { type: 'string' },
+          pairingImageUrlLocal: { type: 'string' },
+          pairingImageUrlMobile: { type: 'string' },
           agentCwd: { type: 'string' },
         },
       },
@@ -124,10 +128,22 @@ function formatConfigureSummary(value) {
   if (value.paired === true) lines.push('状态：已配对')
   if (value.paired === false) lines.push('状态：未配对')
   if (value.needsVerifyCode) lines.push('需要数字配对码：请向用户索取后再次调用 pair_step 并传入 verify_code。')
-  if (Array.isArray(value.pairingPageUrls) && value.pairingPageUrls.length > 0) {
+  if (typeof value.pairingPageUrlLocal === 'string') {
+    lines.push(`本机打开：${value.pairingPageUrlLocal}`)
+  }
+  if (typeof value.pairingPageUrlMobile === 'string') {
+    lines.push(`手机打开：${value.pairingPageUrlMobile}`)
+  }
+  if (!value.pairingPageUrlLocal && !value.pairingPageUrlMobile && Array.isArray(value.pairingPageUrls) && value.pairingPageUrls.length > 0) {
     lines.push(`配对页：${value.pairingPageUrls.join('、')}`)
   }
-  if (Array.isArray(value.pairingImageUrls) && value.pairingImageUrls.length > 0) {
+  if (typeof value.pairingImageUrlLocal === 'string') {
+    lines.push(`本机二维码：${value.pairingImageUrlLocal}`)
+  }
+  if (typeof value.pairingImageUrlMobile === 'string') {
+    lines.push(`手机二维码：${value.pairingImageUrlMobile}`)
+  }
+  if (!value.pairingImageUrlLocal && !value.pairingImageUrlMobile && Array.isArray(value.pairingImageUrls) && value.pairingImageUrls.length > 0) {
     lines.push(`二维码图片：${value.pairingImageUrls.join('、')}`)
   }
   if (typeof value.agentCwd === 'string') lines.push(`工作区：${value.agentCwd}`)

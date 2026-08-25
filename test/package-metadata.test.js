@@ -14,7 +14,7 @@ test("package declares a discoverable and installable DSH Bundle", async () => {
 });
 
 test("release metadata and separate bilingual docs stay aligned", async () => {
-  assert.equal(manifest.version, "0.5.5");
+  assert.equal(manifest.version, "0.5.6");
   assert.equal(manifest.name, "dsh-wx-clawbot");
   assert.equal(manifest.bin["wx-clawbot"], "./src/setup.js");
   for (const file of [

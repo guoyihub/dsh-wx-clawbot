@@ -36,6 +36,7 @@ import { registerWxSendTool } from './tool-wx-send.js'
 import { registerWxConfigureTool } from './tool-wx-configure.js'
 import {
   disconnectPairing,
+  readMobilePublicBaseUrl,
   readPairingStatus,
   resolvePairingOptions,
   WxPairingSession,
@@ -218,7 +219,7 @@ export class DshWeixinBridge {
     this.pollTask = this.pollLoop()
   }
 
-  pairingDefaults() {
+  async pairingDefaults() {
     const dshHome = defaultDshHome()
     return {
       stateDir: this.config.stateDir,
@@ -228,6 +229,7 @@ export class DshWeixinBridge {
       agentPreset: this.config.agentPreset,
       permissionPreset: this.config.permissionPreset,
       webServer: this.ctx.get?.('webServer'),
+      mobilePublicBaseUrl: await readMobilePublicBaseUrl(dshHome),
     }
   }
 
@@ -248,7 +250,7 @@ export class DshWeixinBridge {
    */
   async configure(input) {
     const action = String(input.action ?? '').trim()
-    const defaults = this.pairingDefaults()
+    const defaults = await this.pairingDefaults()
 
     if (action === 'status') {
       const status = await readPairingStatus(resolvePairingOptions({}, defaults))
@@ -261,6 +263,10 @@ export class DshWeixinBridge {
         needsVerifyCode: session?.needsVerifyCode ?? false,
         pairingPageUrls: session?.pairingPageUrls ?? [],
         pairingImageUrls: session?.pairingImageUrls ?? [],
+        ...(session?.pairingPageUrlLocal ? { pairingPageUrlLocal: session.pairingPageUrlLocal } : {}),
+        ...(session?.pairingPageUrlMobile ? { pairingPageUrlMobile: session.pairingPageUrlMobile } : {}),
+        ...(session?.pairingImageUrlLocal ? { pairingImageUrlLocal: session.pairingImageUrlLocal } : {}),
+        ...(session?.pairingImageUrlMobile ? { pairingImageUrlMobile: session.pairingImageUrlMobile } : {}),
         message: status.paired
           ? `微信已配对，工作区 ${status.agentCwd}，授权用户 ${status.allowedUsers} 个。`
           : (this.pairingSession?.active

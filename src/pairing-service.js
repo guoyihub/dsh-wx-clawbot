@@ -1,4 +1,4 @@
-import { writeFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import QRCode from 'qrcode'
 import { DEFAULT_BASE_URL, IlinkClient } from './protocol.js'
@@ -10,7 +10,7 @@ import {
   unsetCredential,
 } from './credential-file.js'
 import { DEFAULT_CREDENTIAL_REF, DEFAULT_QR_PORT, PLUGIN_NAME, QR_IMAGE_PATH, QR_PAGE_PATH } from './constants.js'
-import { QrProxyServer } from './qr-proxy.js'
+import { QrProxyServer, pairingUrlFields } from './qr-proxy.js'
 
 /**
  * @typedef {object} PairingOptions
@@ -25,7 +25,25 @@ import { QrProxyServer } from './qr-proxy.js'
  * @property {string | undefined} [qrBaseUrl]
  * @property {string | undefined} [qrFile]
  * @property {import('./qr-proxy.js').QrProxyServer['webServer']} [webServer]
+ * @property {string | undefined} [mobilePublicBaseUrl]
  */
+
+/**
+ * Read the Mobile PWA public origin from DSH mobile-pairing settings, when set.
+ * @param {string} dshHome
+ * @returns {Promise<string | undefined>}
+ */
+export async function readMobilePublicBaseUrl(dshHome) {
+  try {
+    const raw = await readFile(join(resolve(dshHome), 'mobile-pairing.json'), 'utf8')
+    const parsed = JSON.parse(raw)
+    const value = parsed?.mobilePublicBaseUrl
+    if (typeof value !== 'string' || !value.trim()) return undefined
+    return new URL(value.trim()).origin
+  } catch {
+    return undefined
+  }
+}
 
 /**
  * @param {object} [overrides]
@@ -54,6 +72,7 @@ export function resolvePairingOptions(overrides = {}, defaults = {}) {
     qrBaseUrl: overrides.qrBaseUrl ?? defaults.qrBaseUrl,
     qrFile: overrides.qrFile ? resolve(overrides.qrFile) : undefined,
     webServer: overrides.webServer ?? defaults.webServer,
+    mobilePublicBaseUrl: overrides.mobilePublicBaseUrl ?? defaults.mobilePublicBaseUrl,
   }
 }
 
@@ -136,8 +155,10 @@ export async function publishQrToProxy(proxy, qrContent, liteUrl, qrFile) {
   proxy.setQr(png, liteUrl)
   if (qrFile) await writeFile(qrFile, png)
   return {
-    pairingPageUrls: proxy.publicUrls(QR_PAGE_PATH),
-    pairingImageUrls: proxy.publicUrls(QR_IMAGE_PATH),
+    ...pairingUrlFields(
+      proxy.publicUrls(QR_PAGE_PATH),
+      proxy.publicUrls(QR_IMAGE_PATH),
+    ),
     terminalQr: await QRCode.toString(qrContent, { type: 'terminal', small: true }),
     liteUrl: liteUrl ?? null,
   }
@@ -162,6 +183,14 @@ export class WxPairingSession {
     this.message = ''
     this.pairingPageUrls = []
     this.pairingImageUrls = []
+    /** @type {string | undefined} */
+    this.pairingPageUrlLocal = undefined
+    /** @type {string | undefined} */
+    this.pairingPageUrlMobile = undefined
+    /** @type {string | undefined} */
+    this.pairingImageUrlLocal = undefined
+    /** @type {string | undefined} */
+    this.pairingImageUrlMobile = undefined
     this.terminalQr = ''
     this.liteUrl = null
     this.error = null
@@ -172,12 +201,25 @@ export class WxPairingSession {
     return this.phase === 'waiting_scan' || this.phase === 'scanned' || this.phase === 'need_verify_code'
   }
 
+  applyPublishedPairingUrls(published) {
+    this.pairingPageUrls = published.pairingPageUrls
+    this.pairingImageUrls = published.pairingImageUrls
+    this.pairingPageUrlLocal = published.pairingPageUrlLocal
+    this.pairingPageUrlMobile = published.pairingPageUrlMobile
+    this.pairingImageUrlLocal = published.pairingImageUrlLocal
+    this.pairingImageUrlMobile = published.pairingImageUrlMobile
+  }
+
   snapshot() {
     return {
       phase: this.phase,
       message: this.message,
       pairingPageUrls: [...this.pairingPageUrls],
       pairingImageUrls: [...this.pairingImageUrls],
+      ...(this.pairingPageUrlLocal ? { pairingPageUrlLocal: this.pairingPageUrlLocal } : {}),
+      ...(this.pairingPageUrlMobile ? { pairingPageUrlMobile: this.pairingPageUrlMobile } : {}),
+      ...(this.pairingImageUrlLocal ? { pairingImageUrlLocal: this.pairingImageUrlLocal } : {}),
+      ...(this.pairingImageUrlMobile ? { pairingImageUrlMobile: this.pairingImageUrlMobile } : {}),
       needsVerifyCode: this.phase === 'need_verify_code',
       paired: this.phase === 'confirmed',
       terminalQr: this.terminalQr || undefined,
@@ -191,6 +233,7 @@ export class WxPairingSession {
     if (this.active) throw new Error('已有进行中的微信配对会话')
     this.proxy = new QrProxyServer({
       webServer: this.options.webServer,
+      mobilePublicBaseUrl: this.options.mobilePublicBaseUrl,
       port: this.options.qrPort,
       bind: this.options.qrBind,
       baseUrl: this.options.qrBaseUrl,
@@ -212,12 +255,11 @@ export class WxPairingSession {
       this.qr.qrcode_img_content,
       this.options.qrFile,
     )
-    this.pairingPageUrls = published.pairingPageUrls
-    this.pairingImageUrls = published.pairingImageUrls
+    this.applyPublishedPairingUrls(published)
     this.terminalQr = published.terminalQr
     this.liteUrl = published.liteUrl
     this.phase = 'waiting_scan'
-    this.message = '请用手机微信扫描二维码，或在当前站点打开 /api/wx-clawbot/pairing；扫码后再次调用 pair_step。'
+    this.message = '请让用户直接打开下方完整配对链接（本机或手机）；扫码后再次调用 pair_step。'
     return this.snapshot()
   }
 
@@ -291,8 +333,7 @@ export class WxPairingSession {
             this.qr.qrcode_img_content,
             this.options.qrFile,
           )
-          this.pairingPageUrls = published.pairingPageUrls
-          this.pairingImageUrls = published.pairingImageUrls
+          this.applyPublishedPairingUrls(published)
           this.terminalQr = published.terminalQr
           this.liteUrl = published.liteUrl
           this.phase = 'waiting_scan'
