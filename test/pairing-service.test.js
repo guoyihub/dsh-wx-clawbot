@@ -34,6 +34,58 @@ test('resolvePairingOptions defaults qr port and workspace', () => {
   assert.equal(options.permissionPreset, 'workspace-write')
 })
 
+test('QrProxyServer registers host routes without binding a port', async () => {
+  const routes = []
+  const webServer = {
+    host: '127.0.0.1',
+    port: 3080,
+    register(route) {
+      routes.push(route)
+      return () => {
+        const index = routes.indexOf(route)
+        if (index >= 0) routes.splice(index, 1)
+      }
+    },
+  }
+  const proxy = new (await import('../src/qr-proxy.js')).QrProxyServer({ webServer })
+  await proxy.start()
+  assert.equal(proxy.hosted, true)
+  assert.equal(routes.length, 2)
+  assert.equal(routes[0]?.path, '/wx-clawbot/pairing')
+  await proxy.stop()
+  assert.equal(routes.length, 0)
+})
+
+test('WxPairingSession uses webServer routes when provided', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'wx-host-'))
+  const routes = []
+  const webServer = {
+    host: '127.0.0.1',
+    port: 3080,
+    register(route) {
+      routes.push(route)
+      return () => {
+        const index = routes.indexOf(route)
+        if (index >= 0) routes.splice(index, 1)
+      }
+    },
+  }
+  const options = resolvePairingOptions({
+    stateDir: join(root, 'state'),
+    dshHome: root,
+    webServer,
+  })
+  const session = new WxPairingSession(options, {
+    client: createMockClient([{ status: 'wait' }]),
+  })
+  await session.start()
+  assert.equal(routes.length, 2)
+  assert.match(session.pairingPageUrls[0], /3080\/wx-clawbot\/pairing/)
+  await session.cancel()
+  assert.equal(routes.length, 0)
+  await rm(root, { recursive: true, force: true })
+})
+
 test('WxPairingSession completes pairing and persists credentials', async () => {
   const root = await mkdtemp(join(tmpdir(), 'wx-pair-'))
   const stateDir = join(root, 'state')

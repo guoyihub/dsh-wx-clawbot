@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here.
 
+## 0.5.2 - 2026-08-25
+
+- Serve Weixin QR pairing through the DSH Host `webServer` (default `:3080`) when
+  available, so `wx_configure start_pairing` no longer binds a separate port.
+- Keep standalone QR HTTP on `:3081` for CLI `wx-clawbot setup` only.
+- Omit null `accountId` from `wx_configure` tool output to satisfy the value schema.
+
 ## 0.5.1 - 2026-08-25
 
 - Fix tool output schemas for DSH value schema DSL (use per-property `required:

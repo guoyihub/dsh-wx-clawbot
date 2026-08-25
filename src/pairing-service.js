@@ -24,6 +24,7 @@ import { QrProxyServer } from './qr-proxy.js'
  * @property {string} qrBind
  * @property {string | undefined} [qrBaseUrl]
  * @property {string | undefined} [qrFile]
+ * @property {import('./qr-proxy.js').QrProxyServer['webServer']} [webServer]
  */
 
 /**
@@ -52,6 +53,7 @@ export function resolvePairingOptions(overrides = {}, defaults = {}) {
     qrBind: overrides.qrBind ?? defaults.qrBind ?? '0.0.0.0',
     qrBaseUrl: overrides.qrBaseUrl ?? defaults.qrBaseUrl,
     qrFile: overrides.qrFile ? resolve(overrides.qrFile) : undefined,
+    webServer: overrides.webServer ?? defaults.webServer,
   }
 }
 
@@ -64,7 +66,7 @@ export async function readPairingStatus(options) {
   return {
     paired: Boolean(state.account?.accountId),
     credentialConfigured,
-    accountId: state.account?.accountId ?? null,
+    ...(state.account?.accountId ? { accountId: state.account.accountId } : {}),
     allowedUsers: state.settings.allowedUsers.length,
     sessionCount: Object.keys(state.peers).length,
     agentCwd: state.settings.agentCwd ?? options.agentCwd,
@@ -180,7 +182,7 @@ export class WxPairingSession {
       paired: this.phase === 'confirmed',
       terminalQr: this.terminalQr || undefined,
       liteUrl: this.liteUrl,
-      accountId: this.result?.accountId ?? null,
+      ...(this.result?.accountId ? { accountId: this.result.accountId } : {}),
       error: this.error,
     }
   }
@@ -188,13 +190,14 @@ export class WxPairingSession {
   async start() {
     if (this.active) throw new Error('已有进行中的微信配对会话')
     this.proxy = new QrProxyServer({
+      webServer: this.options.webServer,
       port: this.options.qrPort,
       bind: this.options.qrBind,
       baseUrl: this.options.qrBaseUrl,
     })
     await this.proxy.start().catch(error => {
-      if (error && typeof error === 'object' && 'code' in error && error.code === 'EADDRINUSE') {
-        throw new Error(`端口 ${this.options.qrPort} 已被占用；请指定其他 qr_port`)
+      if (!this.options.webServer && error && typeof error === 'object' && 'code' in error && error.code === 'EADDRINUSE') {
+        throw new Error(`端口 ${this.options.qrPort} 已被占用；请指定其他 qr_port，或在 Host 内配对以复用 webServer 端口`)
       }
       throw error
     })

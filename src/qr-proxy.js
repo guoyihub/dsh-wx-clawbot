@@ -23,13 +23,23 @@ export function listLanIpv4Addresses() {
   return addresses
 }
 
+/**
+ * @param {string} bindHost
+ * @param {number} port
+ */
+function loopbackAuthority(bindHost, port) {
+  const host = bindHost === '0.0.0.0' ? '127.0.0.1' : bindHost
+  return `${host}:${port}`
+}
+
 export class QrProxyServer {
   /**
-   * @param {{ port?: number, bind?: string, baseUrl?: string }} [options]
+   * @param {{ port?: number, bind?: string, baseUrl?: string, webServer?: { host: string, port: number, register(route: { kind: 'exact' | 'prefix', path: string, handler: Function }): () => void } }} [options]
    */
   constructor(options = {}) {
-    this.port = options.port ?? DEFAULT_QR_PORT
-    this.bind = options.bind ?? '0.0.0.0'
+    this.webServer = options.webServer
+    this.port = options.webServer?.port ?? options.port ?? DEFAULT_QR_PORT
+    this.bind = options.webServer?.host ?? options.bind ?? '0.0.0.0'
     this.baseUrl = options.baseUrl?.replace(/\/$/, '')
     /** @type {Buffer | null} */
     this.png = null
@@ -37,10 +47,26 @@ export class QrProxyServer {
     this.liteUrl = null
     /** @type {import('node:http').Server | null} */
     this.server = null
+    /** @type {Array<() => void>} */
+    this.routeDisposers = []
+  }
+
+  get hosted() {
+    return Boolean(this.webServer)
   }
 
   async start() {
-    if (this.server) return
+    if (this.server || this.routeDisposers.length) return
+    if (this.webServer) {
+      const handler = (request, response) => {
+        void this.handle(request, response)
+      }
+      this.routeDisposers.push(
+        this.webServer.register({ kind: 'exact', path: QR_PAGE_PATH, handler }),
+        this.webServer.register({ kind: 'exact', path: QR_IMAGE_PATH, handler }),
+      )
+      return
+    }
     this.server = createServer((request, response) => {
       void this.handle(request, response)
     })
@@ -59,6 +85,11 @@ export class QrProxyServer {
   }
 
   async stop() {
+    if (this.routeDisposers.length) {
+      for (const dispose of this.routeDisposers) dispose()
+      this.routeDisposers = []
+      return
+    }
     if (!this.server) return
     const server = this.server
     this.server = null
@@ -82,7 +113,7 @@ export class QrProxyServer {
     if (this.baseUrl) return [`${this.baseUrl}${pathname}`]
     const lan = listLanIpv4Addresses()
     if (lan.length) return lan.map(address => `http://${address}:${this.port}${pathname}`)
-    return [`http://127.0.0.1:${this.port}${pathname}`]
+    return [`http://${loopbackAuthority(this.bind, this.port)}${pathname}`]
   }
 
   /**
@@ -90,7 +121,8 @@ export class QrProxyServer {
    * @param {import('node:http').ServerResponse} response
    */
   async handle(request, response) {
-    const host = request.headers.host ?? `127.0.0.1:${this.port}`
+    const fallbackAuthority = loopbackAuthority(this.bind, this.port)
+    const host = request.headers.host ?? fallbackAuthority
     const url = new URL(request.url ?? '/', `http://${host}`)
     if (request.method !== 'GET') {
       response.writeHead(405, { Allow: 'GET' })
@@ -116,7 +148,7 @@ export class QrProxyServer {
         response.end()
         return
       }
-      const imageUrl = this.publicUrls(QR_IMAGE_PATH)[0]
+      const imageUrl = this.hosted ? QR_IMAGE_PATH : this.publicUrls(QR_IMAGE_PATH)[0]
       const lite = this.liteUrl
         ? `<p>微信备用链接：<a href="${escapeHtml(this.liteUrl)}">${escapeHtml(this.liteUrl)}</a></p>`
         : ''

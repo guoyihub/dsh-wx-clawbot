@@ -226,7 +226,20 @@ export class DshWeixinBridge {
       agentCwd: this.config.agentCwd,
       agentPreset: this.config.agentPreset,
       permissionPreset: this.config.permissionPreset,
+      webServer: this.ctx.get?.('webServer'),
     }
+  }
+
+  /**
+   * @param {Record<string, unknown>} payload
+   */
+  configurePayload(payload) {
+    const accountId = payload.accountId
+    if (accountId == null) {
+      const { accountId: _omit, ...rest } = payload
+      return rest
+    }
+    return payload
   }
 
   /**
@@ -239,7 +252,7 @@ export class DshWeixinBridge {
     if (action === 'status') {
       const status = await readPairingStatus(resolvePairingOptions({}, defaults))
       const session = this.pairingSession?.snapshot()
-      return {
+      return this.configurePayload({
         action,
         ...status,
         pairingActive: Boolean(this.pairingSession?.active),
@@ -252,11 +265,14 @@ export class DshWeixinBridge {
           : (this.pairingSession?.active
             ? this.pairingSession.message
             : '微信尚未配对；可调用 start_pairing 开始扫码配对。'),
-      }
+      })
     }
 
     if (action === 'start_pairing') {
-      if (this.pairingSession?.active) throw new Error('已有进行中的微信配对会话')
+      if (this.pairingSession) {
+        await this.pairingSession.cancel()
+        this.pairingSession = null
+      }
       const status = await readPairingStatus(resolvePairingOptions({}, defaults))
       if (status.paired && status.credentialConfigured) {
         throw new Error('微信已配对；如需重新配对请先调用 disconnect')
@@ -270,13 +286,13 @@ export class DshWeixinBridge {
       }, defaults)
       this.pairingSession = new WxPairingSession(options)
       const snapshot = await this.pairingSession.start()
-      return {
+      return this.configurePayload({
         action,
         ...status,
         ...snapshot,
         pairingActive: true,
         credentialConfigured: false,
-      }
+      })
     }
 
     if (action === 'pair_step') {
@@ -288,27 +304,27 @@ export class DshWeixinBridge {
       if (snapshot.paired) {
         this.pairingSession = null
         await this.activateChannel()
-        return {
+        return this.configurePayload({
           action,
           pairingActive: false,
           credentialConfigured: true,
           paired: true,
           ...snapshot,
-        }
+        })
       }
-      return {
+      return this.configurePayload({
         action,
         pairingActive: this.pairingSession.active,
         credentialConfigured: false,
         paired: false,
         ...snapshot,
-      }
+      })
     }
 
     if (action === 'cancel_pairing') {
       const snapshot = await this.pairingSession?.cancel()
       this.pairingSession = null
-      return {
+      return this.configurePayload({
         action,
         pairingActive: false,
         paired: false,
@@ -316,7 +332,7 @@ export class DshWeixinBridge {
         phase: snapshot?.phase ?? 'idle',
         needsVerifyCode: false,
         message: snapshot?.message ?? '没有进行中的微信配对会话。',
-      }
+      })
     }
 
     if (action === 'disconnect') {
@@ -324,7 +340,7 @@ export class DshWeixinBridge {
       this.pairingSession = null
       await disconnectPairing(resolvePairingOptions({}, defaults))
       this.state = await this.store.load()
-      return {
+      return this.configurePayload({
         action,
         paired: false,
         credentialConfigured: false,
@@ -332,7 +348,7 @@ export class DshWeixinBridge {
         phase: 'idle',
         needsVerifyCode: false,
         message: '已解除本机微信配对与凭据；若 Host 已在运行，请重启 Host 使微信通道完全停止。',
-      }
+      })
     }
 
     throw new Error(`unknown wx_configure action: ${action}`)

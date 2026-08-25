@@ -46,7 +46,7 @@ export function registerWxConfigureTool(ctx, getBridge) {
       },
       qr_port: {
         type: 'number',
-        description: 'HTTP port for QR pairing pages during start_pairing (default 3081).',
+        description: 'Standalone QR HTTP port for CLI setup only; Host pairing reuses webServer (default 3080) and ignores this.',
       },
       qr_base_url: {
         type: 'string',
@@ -74,7 +74,6 @@ export function registerWxConfigureTool(ctx, getBridge) {
             items: { type: 'string' },
           },
           agentCwd: { type: 'string' },
-          accountId: { type: 'string' },
         },
       },
       render: (_args, value) => [{
