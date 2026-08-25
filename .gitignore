@@ -1,0 +1,13 @@
+node_modules/
+*.tgz
+pairing-qr*.png
+.vendor-inspect/
+.DS_Store
+Thumbs.db
+*.log
+coverage/
+.env
+.env.*
+state.json
+.credentials.yaml
+

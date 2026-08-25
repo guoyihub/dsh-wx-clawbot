@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.19.0
+          cache: npm
+      - run: npm ci --legacy-peer-deps
+      - run: npm run check
+      - run: npm test
+
+  skill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Verify Agent Skills discovery
+        run: npx --yes skills@1.5.23 add . --list
+      - name: Preview ClawHub publication
+        run: >-
+          npx --yes clawhub@0.23.3 skill publish ./skills/wx-clawbot
+          --slug wx-clawbot
+          --name "DSH Weixin ClawBot"
+          --categories integrations
+          --topics deepseek-harness,dsh,weixin,clawbot,remote-control
+          --source-repo guoyihub/dsh-wx-clawbot
+          --source-commit ${{ github.sha }}
+          --source-path skills/wx-clawbot
+          --dry-run --json --no-input
