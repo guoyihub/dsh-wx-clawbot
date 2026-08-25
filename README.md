@@ -6,6 +6,11 @@
 
 **DeepSeek Harness 的微信 ClawBot/iLink Host 插件。** 安装到 DSH Profile 后，可通过 Agent 对话完成配对，从手机微信远程驱动电脑上的 Agent 任务。
 
+```powershell
+# 安装插件（web 可换成你的 Profile 名）
+dsh plugin --profile web add github:guoyihub/dsh-wx-clawbot
+```
+
 | 文档 | 说明 |
 |------|------|
 | [架构说明](docs/ARCHITECTURE.zh.md) | 组件边界、Session 模型、兼容性 |
@@ -54,45 +59,43 @@
 
 ## 快速开始
 
-### 1. 安装插件
+### 方式 A：全局 `dsh` CLI
 
-在已安装 DSH CLI 的机器上执行（`web` 可换成你实际使用的 Profile 名）：
+适用于已安装 `@deepseek-ai/dsh` 或官方 DSH 发行版的环境。
 
 ```powershell
+# 1. 安装插件到 web Profile（桌面版请换成实际 Profile 名）
 dsh plugin --profile web add github:guoyihub/dsh-wx-clawbot
-```
 
-从源码仓库安装（开发）：
-
-```powershell
-git clone https://github.com/guoyihub/dsh-wx-clawbot.git
-cd dsh-wx-clawbot
-dsh plugin --profile web add --force .
-```
-
-固定版本（生产推荐）：在 [Releases](https://github.com/guoyihub/dsh-wx-clawbot/releases) 下载 `.tgz` 后：
-
-```powershell
-dsh plugin --profile web add --force .\dsh-wx-clawbot-0.5.0.tgz
-```
-
-### 2. 启动 Host
-
-```powershell
-# 官方 DSH
+# 2. 启动 DSH Web Host
 dsh web
 
-# 或 deepseek-harness-mobile（Host :3080 + Mobile PWA :8030）
-pnpm dsh
+# 3. 打开 http://127.0.0.1:3080，在对话里说：
+#    「帮我配置微信」
+#    Agent 会调用 wx_configure，按提示扫码即可完成配对
 ```
 
-### 3. 对话式配对（推荐）
+### 方式 B：`pnpm dsh`（deepseek-harness-mobile）
 
-在 Web UI 或 Mobile 对话中告诉 Agent：
+适用于从 [deepseek-harness-mobile](https://github.com/deepseek-ai/deepseek-harness) 源码运行的环境。
 
-> 帮我配置微信
+```powershell
+# 0. 进入 deepseek-harness-mobile 仓库根目录
+cd path\to\deepseek-harness-mobile
 
-Agent 将调用内置工具 **`wx_configure`**，按以下流程自动完成：
+# 1. 安装插件到 web Profile
+pnpm dsh plugin --profile web add github:guoyihub/dsh-wx-clawbot
+
+# 2. 启动 Host (:3080) + Mobile PWA (:8030)
+pnpm dsh
+
+# 3. 打开 http://127.0.0.1:3080 或手机访问 http://<电脑IP>:8030
+#    在对话里说：「帮我配置微信」
+```
+
+### 对话式配对流程
+
+Agent 调用内置工具 **`wx_configure`** 自动完成：
 
 | 步骤 | 工具动作 | 说明 |
 |------|----------|------|
@@ -103,24 +106,60 @@ Agent 将调用内置工具 **`wx_configure`**，按以下流程自动完成：
 
 配对页示例：`http://<电脑局域网IP>:3081/wx-clawbot/pairing`
 
-### 4. 验证
+### 验证
 
-- 微信发送 `/status`，应收到通道状态回复。
-- 或在 Host 对话中再次请求 Agent 调用 `wx_configure({ action: "status" })`。
+```powershell
+# 微信里发送
+/status
+
+# 或在 Host 对话中再次说
+帮我查看微信通道状态
+```
 
 ---
 
-## 安装方式对照
+## 其他安装方式
 
-| 方式 | 命令 | 适用 |
-|------|------|------|
-| GitHub 直装 | `dsh plugin --profile web add github:guoyihub/dsh-wx-clawbot` | 大多数用户 |
-| 本地路径 | `dsh plugin --profile web add --force /path/to/dsh-wx-clawbot` | 插件开发 |
-| Release 包 | `dsh plugin --profile web add --force ./dsh-wx-clawbot-x.y.z.tgz` | 生产固定版本 |
+### 从源码 checkout 安装（开发）
+
+```powershell
+# 全局 dsh
+git clone https://github.com/guoyihub/dsh-wx-clawbot.git
+cd dsh-wx-clawbot
+dsh plugin --profile web add --force .
+
+# pnpm dsh（在 deepseek-harness-mobile 目录）
+pnpm dsh plugin --profile web add --force E:\path\to\dsh-wx-clawbot
+```
+
+### 固定 Release 版本（生产推荐）
+
+在 [Releases](https://github.com/guoyihub/dsh-wx-clawbot/releases) 下载 `.tgz` 后：
+
+```powershell
+# 全局 dsh
+dsh plugin --profile web add --force .\dsh-wx-clawbot-0.5.0.tgz
+
+# pnpm dsh
+pnpm dsh plugin --profile web add --force .\dsh-wx-clawbot-0.5.0.tgz
+```
+
+---
+
+## 安装命令对照
+
+| 场景 | 命令 |
+|------|------|
+| GitHub 直装（dsh） | `dsh plugin --profile web add github:guoyihub/dsh-wx-clawbot` |
+| GitHub 直装（pnpm dsh） | `pnpm dsh plugin --profile web add github:guoyihub/dsh-wx-clawbot` |
+| 本地路径（dsh） | `dsh plugin --profile web add --force /path/to/dsh-wx-clawbot` |
+| 本地路径（pnpm dsh） | `pnpm dsh plugin --profile web add --force /path/to/dsh-wx-clawbot` |
+| Release 包 | `… add --force ./dsh-wx-clawbot-x.y.z.tgz` |
 
 安装完成后插件出现在 Profile 的 `dsh.profile.bundles` 中，Cordis 插件 ID 为 **`wx-clawbot`**。
 
 ---
+
 
 ## Agent 工具
 
