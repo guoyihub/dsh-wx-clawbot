@@ -34,6 +34,7 @@ import { sendToAuthorizedUser } from './outbound-send.js'
 import { DEFAULT_CREDENTIAL_REF, PLUGIN_NAME, SESSION_ID_PREFIX } from './constants.js'
 import { toLosslessToolOutput } from './tool-output.js'
 import { registerWxConfigureTool } from './tool-wx-configure.js'
+import { registerWxSendTool } from './tool-wx-send.js'
 import {
   disconnectPairing,
   readMobilePublicBaseUrl,
