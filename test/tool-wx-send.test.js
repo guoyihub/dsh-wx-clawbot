@@ -65,10 +65,23 @@ test('sendToAuthorizedUser rejects unpaired bridge and empty text', async () => 
   )
 })
 
-test('sendToAuthorizedUser requires explicit recipient for non-weixin agents', async () => {
+test('sendToAuthorizedUser requires explicit recipient for non-weixin agents with multiple users', async () => {
   const bridge = createBridge()
   await assert.rejects(
     () => sendToAuthorizedUser(bridge, { agentId: 'web-agent', text: 'hello' }),
     /未指定 to/,
   )
+})
+
+test('sendToAuthorizedUser delivers to sole authorized user for web agents', async () => {
+  const bridge = createBridge()
+  bridge.state.settings.allowedUsers = ['owner-abcdefgh']
+  bridge.state.settings.ownerUserId = 'owner-abcdefgh'
+
+  const result = await sendToAuthorizedUser(bridge, {
+    agentId: 'web-agent',
+    text: '微信网关连接成功',
+  })
+
+  assert.deepEqual(result, { sent: true, to: 'owner-abcdefgh', chunks: 1 })
 })

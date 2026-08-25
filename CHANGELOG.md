@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here.
 
+## 0.5.7 - 2026-08-25
+
+- Sync paired bot tokens into `ctx.credentials` after `wx_configure` pairing so
+  `pair_step` no longer fails with “credential … not configured”.
+- Recover `pair_step` when pairing already completed but the in-memory session
+  was lost.
+- Default `wx_send` to the sole authorized user from Web/Host sessions; accept
+  `to: "0"` when only one user exists.
+- Expose `authorizedUsers` in `wx_configure status` for outbound messaging.
+
 ## 0.5.6 - 2026-08-25
 
 - Host pairing emits ready-to-open absolute URLs with `pairingPageUrlLocal` and

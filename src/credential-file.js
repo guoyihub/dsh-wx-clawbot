@@ -115,14 +115,27 @@ export async function unsetCredential(ref, options = {}) {
 export async function hasCredential(ref, options = {}) {
   validateRef(ref)
   if (process.env[ref]) return true
+  return Boolean(await readCredentialValue(ref, options))
+}
+
+/**
+ * Read a credential value from the process environment or the versioned file layout.
+ * @param {string} ref
+ * @param {object} [options]
+ * @returns {Promise<string | undefined>}
+ */
+export async function readCredentialValue(ref, options = {}) {
+  validateRef(ref)
+  const fromEnv = process.env[ref]
+  if (typeof fromEnv === 'string' && fromEnv.trim()) return fromEnv.trim()
   const filename = options.filename ?? credentialsPath(options.dshHome)
   try {
     const document = await readDocument(filename)
     const root = document.toJS() ?? {}
     const value = root.refs?.[ref] ?? root[ref]
-    return typeof value === 'string' && value.length > 0
+    return typeof value === 'string' && value.trim() ? value.trim() : undefined
   } catch (error) {
-    if (error?.code === 'ENOENT') return false
+    if (error?.code === 'ENOENT') return undefined
     throw error
   }
 }

@@ -77,6 +77,19 @@ export function registerWxConfigureTool(ctx, getBridge) {
           pairingPageUrlMobile: { type: 'string' },
           pairingImageUrlLocal: { type: 'string' },
           pairingImageUrlMobile: { type: 'string' },
+          authorizedUsers: {
+            type: 'array',
+            items: {
+              type: 'object',
+              additionalProperties: true,
+              properties: {
+                index: { type: 'number', required: true },
+                userId: { type: 'string', required: true },
+                maskedUserId: { type: 'string', required: true },
+              },
+            },
+          },
+          ownerUserId: { type: 'string' },
           agentCwd: { type: 'string' },
         },
       },
@@ -145,6 +158,13 @@ function formatConfigureSummary(value) {
   }
   if (!value.pairingImageUrlLocal && !value.pairingImageUrlMobile && Array.isArray(value.pairingImageUrls) && value.pairingImageUrls.length > 0) {
     lines.push(`二维码图片：${value.pairingImageUrls.join('、')}`)
+  }
+  if (Array.isArray(value.authorizedUsers) && value.authorizedUsers.length > 0) {
+    const rows = value.authorizedUsers.map(user => `  ${user.index}. ${user.maskedUserId}`)
+    lines.push(`授权用户：\n${rows.join('\n')}`)
+    if (value.authorizedUsers.length === 1) {
+      lines.push('wx_send 可省略 to，或传序号 1 / 0。')
+    }
   }
   if (typeof value.agentCwd === 'string') lines.push(`工作区：${value.agentCwd}`)
   return lines.filter(Boolean).join('\n')

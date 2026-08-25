@@ -13,7 +13,7 @@ export function registerWxSendTool(ctx, getBridge) {
     description: [
       'Send a text message to an authorized Weixin user through the paired ClawBot channel.',
       'Use when the task requires proactively notifying a Weixin user outside the normal reply turn.',
-      'When to is omitted, the message goes to the Weixin user that owns the current agent session.',
+      'When to is omitted, the message goes to the Weixin user that owns the current agent session, or the sole authorized user when only one exists.',
     ].join(' '),
     parameters: {
       text: {
@@ -23,7 +23,7 @@ export function registerWxSendTool(ctx, getBridge) {
       },
       to: {
         type: 'string',
-        description: 'Authorized Weixin user index or user ID. Omit to target the current session owner.',
+        description: 'Authorized Weixin user index (1-based), user ID, or 0 when only one user exists. Omit to target the current session owner or the sole authorized user.',
       },
     },
     output: {

@@ -19,7 +19,7 @@ import {
   shortSessionId,
   visibleSessions,
 } from './control.js'
-import { defaultDshHome } from './credential-file.js'
+import { defaultDshHome, readCredentialValue } from './credential-file.js'
 import {
   DEFAULT_BASE_URL,
   IlinkClient,
@@ -186,10 +186,20 @@ export class DshWeixinBridge {
     this.pairingSession = null
   }
 
+  async ensureCredentialReady() {
+    const ref = credentialRef(this.config.credentialRef)
+    const hit = await this.ctx.credentials.resolve(ref)
+    if (hit?.value) return hit.value
+    const value = await readCredentialValue(this.config.credentialRef, { dshHome: defaultDshHome() })
+    if (!value) {
+      throw new Error(`credential ${this.config.credentialRef} is not configured; run wx-clawbot setup or wx_configure start_pairing`)
+    }
+    await this.ctx.credentials.set(ref, value)
+    return value
+  }
+
   async resolveToken() {
-    const hit = await this.ctx.credentials.resolve(credentialRef(this.config.credentialRef))
-    if (!hit?.value) throw new Error(`credential ${this.config.credentialRef} is not configured; run wx-clawbot setup`)
-    return hit.value
+    return this.ensureCredentialReady()
   }
 
   async start() {
@@ -246,6 +256,45 @@ export class DshWeixinBridge {
   }
 
   /**
+   * @param {Awaited<ReturnType<typeof readPairingStatus>>} status
+   */
+  formatPairedStatusMessage(status) {
+    const userHint = status.authorizedUsers?.length === 1
+      ? `；唯一授权用户序号 1（${status.authorizedUsers[0].maskedUserId}），wx_send 可省略 to`
+      : (status.allowedUsers > 0 ? `；授权用户 ${status.allowedUsers} 个` : '')
+    return `微信已配对，工作区 ${status.agentCwd}${userHint}。`
+  }
+
+  /**
+   * @param {object} input
+   */
+  async finishSuccessfulPairing(action, snapshot = {}) {
+    await this.ensureCredentialReady()
+    this.pairingSession = null
+    this.state = await this.store.load()
+    let channelWarning
+    try {
+      await this.activateChannel()
+    } catch (error) {
+      channelWarning = error instanceof Error ? error.message : String(error)
+    }
+    const status = await readPairingStatus(resolvePairingOptions({}, await this.pairingDefaults()))
+    return this.configurePayload({
+      action,
+      ...status,
+      ...snapshot,
+      pairingActive: false,
+      credentialConfigured: true,
+      paired: true,
+      phase: 'paired',
+      needsVerifyCode: false,
+      message: channelWarning
+        ? `微信配对成功，但通道启动暂时失败：${channelWarning}；可调用 status 确认或重启 Host。`
+        : this.formatPairedStatusMessage(status),
+    })
+  }
+
+  /**
    * @param {object} input
    */
   async configure(input) {
@@ -268,7 +317,7 @@ export class DshWeixinBridge {
         ...(session?.pairingImageUrlLocal ? { pairingImageUrlLocal: session.pairingImageUrlLocal } : {}),
         ...(session?.pairingImageUrlMobile ? { pairingImageUrlMobile: session.pairingImageUrlMobile } : {}),
         message: status.paired
-          ? `微信已配对，工作区 ${status.agentCwd}，授权用户 ${status.allowedUsers} 个。`
+          ? this.formatPairedStatusMessage(status)
           : (this.pairingSession?.active
             ? this.pairingSession.message
             : '微信尚未配对；可调用 start_pairing 开始扫码配对。'),
@@ -303,21 +352,19 @@ export class DshWeixinBridge {
     }
 
     if (action === 'pair_step') {
-      if (!this.pairingSession) throw new Error('没有进行中的微信配对；请先调用 start_pairing')
+      if (!this.pairingSession) {
+        const status = await readPairingStatus(resolvePairingOptions({}, defaults))
+        if (status.paired) {
+          return this.finishSuccessfulPairing(action, { phase: 'paired' })
+        }
+        throw new Error('没有进行中的微信配对；请先调用 start_pairing')
+      }
       const snapshot = await this.pairingSession.step({
         verifyCode: input.verifyCode,
         signal: input.signal,
       })
       if (snapshot.paired) {
-        this.pairingSession = null
-        await this.activateChannel()
-        return this.configurePayload({
-          action,
-          pairingActive: false,
-          credentialConfigured: true,
-          paired: true,
-          ...snapshot,
-        })
+        return this.finishSuccessfulPairing(action, snapshot)
       }
       return this.configurePayload({
         action,

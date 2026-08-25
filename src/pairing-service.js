@@ -10,6 +10,7 @@ import {
   unsetCredential,
 } from './credential-file.js'
 import { DEFAULT_CREDENTIAL_REF, DEFAULT_QR_PORT, PLUGIN_NAME, QR_IMAGE_PATH, QR_PAGE_PATH } from './constants.js'
+import { maskUserId } from './control.js'
 import { QrProxyServer, pairingUrlFields } from './qr-proxy.js'
 
 /**
@@ -87,6 +88,12 @@ export async function readPairingStatus(options) {
     credentialConfigured,
     ...(state.account?.accountId ? { accountId: state.account.accountId } : {}),
     allowedUsers: state.settings.allowedUsers.length,
+    authorizedUsers: state.settings.allowedUsers.map((userId, index) => ({
+      index: index + 1,
+      userId,
+      maskedUserId: maskUserId(userId),
+    })),
+    ownerUserId: state.settings.ownerUserId ?? undefined,
     sessionCount: Object.keys(state.peers).length,
     agentCwd: state.settings.agentCwd ?? options.agentCwd,
     agentPreset: state.settings.agentPreset ?? options.agentPreset,

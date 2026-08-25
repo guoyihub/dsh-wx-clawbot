@@ -87,6 +87,7 @@ export function resolveAllowedUserReference(settings, reference) {
   const users = settings?.allowedUsers ?? []
   const wanted = String(reference ?? '').trim()
   if (!wanted) return { error: '请提供用户序号或用户 ID。' }
+  if (wanted === '0' && users.length === 1) return { userId: users[0] }
   if (/^[1-9]\d*$/u.test(wanted)) {
     const userId = users[Number(wanted) - 1]
     return userId ? { userId } : { error: `没有序号为 ${wanted} 的用户。` }
@@ -106,6 +107,7 @@ export function resolveAllowedUserReference(settings, reference) {
  * @returns {string}
  */
 export function resolveOutboundRecipient(settings, agentOwners, agentId, reference) {
+  const users = settings?.allowedUsers ?? []
   const wanted = String(reference ?? '').trim()
   if (wanted) {
     const resolved = resolveAllowedUserReference(settings, wanted)
@@ -113,8 +115,9 @@ export function resolveOutboundRecipient(settings, agentOwners, agentId, referen
     return resolved.userId
   }
   const owner = agentOwners.get(String(agentId ?? ''))
-  if (!owner) {
-    throw new Error('未指定 to，且当前 Agent 不是微信用户会话；请提供授权用户序号或用户 ID。')
-  }
-  return owner
+  if (owner) return owner
+  if (users.length === 1) return users[0]
+  const ownerUserId = typeof settings?.ownerUserId === 'string' ? settings.ownerUserId.trim() : ''
+  if (ownerUserId && users.includes(ownerUserId)) return ownerUserId
+  throw new Error('未指定 to，且当前 Agent 不是微信用户会话；请提供授权用户序号或用户 ID。')
 }

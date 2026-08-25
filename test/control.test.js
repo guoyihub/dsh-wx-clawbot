@@ -58,6 +58,7 @@ test('allowed user references support list positions and unique prefixes', () =>
   assert.equal(resolveAllowedUserReference(settings, 'member-1').userId, 'member-12345678')
   assert.match(resolveAllowedUserReference(settings, 'member').error, /不唯一/)
   assert.equal(maskUserId('owner-abcdefgh'), 'owne…efgh')
+  assert.equal(resolveAllowedUserReference({ allowedUsers: ['solo-user-id'] }, '0').userId, 'solo-user-id')
 })
 
 test('resolveOutboundRecipient prefers explicit to and falls back to agent owner', () => {
@@ -69,4 +70,10 @@ test('resolveOutboundRecipient prefers explicit to and falls back to agent owner
     () => resolveOutboundRecipient(settings, owners, 'agent-2', undefined),
     /未指定 to/,
   )
+})
+
+test('resolveOutboundRecipient falls back to sole authorized user for web agents', () => {
+  const settings = { allowedUsers: ['solo-user-id'], ownerUserId: 'solo-user-id' }
+  assert.equal(resolveOutboundRecipient(settings, new Map(), 'web-agent', undefined), 'solo-user-id')
+  assert.equal(resolveOutboundRecipient(settings, new Map(), 'web-agent', '0'), 'solo-user-id')
 })
