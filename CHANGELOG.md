@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented here.
 
+## 0.5.13 - 2026-08-26
+
+- Fix `wx_send` failing with `bridge.allowed is not a function` after passing a
+  spread bridge object that dropped class methods.
+
 ## 0.5.12 - 2026-08-26
 
 - Return Tencent `qrcode_img_content` as `pairingUrl` for `wx_configure` pairing;

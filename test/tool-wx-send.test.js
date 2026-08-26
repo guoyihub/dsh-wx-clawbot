@@ -19,7 +19,6 @@ function createBridge() {
     allowed(from) {
       return this.state.settings.allowedUsers.includes(from)
     },
-    async ensureReady() {},
     async send(to, text, contextToken, runId) {
       this.delivered.push({ to, text, contextToken, runId })
     },

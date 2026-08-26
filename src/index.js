@@ -805,11 +805,9 @@ export class DshWeixinBridge {
   }
 
   /** @param {{ agentId: string, reference?: string, text: string, signal?: AbortSignal }} input */
-  sendToUser(input) {
-    return sendToAuthorizedUser({
-      ...this,
-      ensureReady: () => this.ensureChannelReady(),
-    }, input)
+  async sendToUser(input) {
+    await this.ensureChannelReady()
+    return sendToAuthorizedUser(this, input)
   }
 
   async processFastMessage(message) {

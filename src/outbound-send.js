@@ -12,7 +12,6 @@ import { splitText } from './protocol.js'
  *   },
  *   agentOwners: Map<string, string>,
  *   allowed: (userId: string) => boolean,
- *   ensureReady?: () => Promise<void>,
  *   send: (userId: string, text: string, contextToken?: string, runId?: string) => Promise<void>,
  * }} bridge
  * @param {{ agentId: string, reference?: string, text: string, signal?: AbortSignal }} input
@@ -24,7 +23,6 @@ export async function sendToAuthorizedUser(bridge, input) {
   }
   if (input.signal?.aborted) throw new Error('工具调用已取消')
   if (!bridge.state?.settings) throw new Error('微信通道尚未就绪')
-  await bridge.ensureReady?.()
   const userId = resolveOutboundRecipient(
     bridge.state.settings,
     bridge.agentOwners,

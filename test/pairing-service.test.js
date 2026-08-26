@@ -187,6 +187,45 @@ test('WxPairingSession requests verify code before confirmation', async () => {
   await rm(root, { recursive: true, force: true })
 })
 
+test('DshWeixinBridge sendToUser keeps class methods when delegating outbound send', async () => {
+  const { DshWeixinBridge } = await import('../src/index.js')
+  const root = await mkdtemp(join(tmpdir(), 'wx-bridge-send-'))
+  const bridge = new DshWeixinBridge(
+    {
+      credentials: {
+        resolve: async () => ({ value: 'token' }),
+        set: async () => {},
+      },
+      logger: { info() {}, warn() {} },
+    },
+    {
+      enabled: true,
+      stateDir: join(root, 'state'),
+      credentialRef: DEFAULT_CREDENTIAL_REF,
+      agentCwd: root,
+    },
+    { store: new StateStore(join(root, 'state')) },
+  )
+  bridge.state = {
+    account: { accountId: 'bot-1', baseUrl: 'https://ilinkai.weixin.qq.com' },
+    settings: { allowedUsers: ['user-1'], maxReplyChars: 3800 },
+    deliveryContexts: {
+      'user-1': { contextToken: 'ctx-1', updatedAt: '2026-08-26T00:00:00.000Z' },
+    },
+    outbox: [],
+  }
+  bridge.pollTask = Promise.resolve()
+  let delivered
+  bridge.send = async (to, text, contextToken) => {
+    delivered = { to, text, contextToken }
+  }
+
+  const result = await bridge.sendToUser({ agentId: 'web-agent', text: 'hello' })
+  assert.deepEqual(result, { sent: true, to: 'user-1', chunks: 1 })
+  assert.deepEqual(delivered, { to: 'user-1', text: 'hello', contextToken: 'ctx-1' })
+  await rm(root, { recursive: true, force: true })
+})
+
 test('DshWeixinBridge configure reports status and rejects unknown actions', async () => {
   const { DshWeixinBridge } = await import('../src/index.js')
   const root = await mkdtemp(join(tmpdir(), 'wx-bridge-'))
