@@ -37,6 +37,7 @@ function parseArgs(argv) {
     )
   }
   if (result.qrFile) result.qrFile = resolve(result.qrFile)
+  if (result.command === 'setup') result.serveQrHttp = true
   return { ...resolvePairingOptions(result), command: result.command }
 }
 
@@ -65,10 +66,10 @@ async function promptVerifyCode(reader, prompt) {
 async function publishQr(session) {
   const snapshot = session.snapshot()
   if (snapshot.terminalQr) stdout.write(`${snapshot.terminalQr}\n`)
-  stdout.write('\n请用手机微信扫描二维码，或在手机浏览器打开配对页。\n')
-  for (const url of snapshot.pairingPageUrls) stdout.write(`配对页：${url}\n`)
-  for (const url of snapshot.pairingImageUrls) stdout.write(`二维码图片：${url}\n`)
-  if (snapshot.liteUrl) stdout.write(`微信备用链接：\n${snapshot.liteUrl}\n`)
+  stdout.write('\n请让用户在微信内打开下方腾讯配对链接（点开即可扫码）。\n')
+  if (snapshot.pairingUrl) stdout.write(`微信配对链接：${snapshot.pairingUrl}\n`)
+  for (const url of snapshot.pairingPageUrls) stdout.write(`备用配对页：${url}\n`)
+  for (const url of snapshot.pairingImageUrls) stdout.write(`备用二维码图片：${url}\n`)
   stdout.write('\n')
 }
 

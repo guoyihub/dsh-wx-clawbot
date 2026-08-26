@@ -10,13 +10,18 @@ function createBridge() {
         allowedUsers: ['owner-abcdefgh', 'member-12345678'],
         maxReplyChars: 20,
       },
+      deliveryContexts: {
+        'owner-abcdefgh': { contextToken: 'ctx-owner', updatedAt: '2026-08-26T00:00:00.000Z' },
+        'member-12345678': { contextToken: 'ctx-member', runId: 'run-1', updatedAt: '2026-08-26T00:00:00.000Z' },
+      },
     },
     agentOwners: new Map([['agent-owner', 'owner-abcdefgh']]),
     allowed(from) {
       return this.state.settings.allowedUsers.includes(from)
     },
-    async send(to, text) {
-      this.delivered.push({ to, text })
+    async ensureReady() {},
+    async send(to, text, contextToken, runId) {
+      this.delivered.push({ to, text, contextToken, runId })
     },
     delivered: [],
   }
@@ -32,7 +37,12 @@ test('sendToAuthorizedUser delivers to the owning Weixin user by default', async
   })
 
   assert.deepEqual(result, { sent: true, to: 'owner-abcdefgh', chunks: 1 })
-  assert.deepEqual(bridge.delivered, [{ to: 'owner-abcdefgh', text: '任务已完成' }])
+  assert.deepEqual(bridge.delivered, [{
+    to: 'owner-abcdefgh',
+    text: '任务已完成',
+    contextToken: 'ctx-owner',
+    runId: undefined,
+  }])
 })
 
 test('sendToAuthorizedUser accepts explicit authorized recipient and splits long messages', async () => {
@@ -48,6 +58,8 @@ test('sendToAuthorizedUser accepts explicit authorized recipient and splits long
   assert.equal(result.chunks, 2)
   assert.equal(bridge.delivered.length, 1)
   assert.equal(bridge.delivered[0].to, 'member-12345678')
+  assert.equal(bridge.delivered[0].contextToken, 'ctx-member')
+  assert.equal(bridge.delivered[0].runId, 'run-1')
 })
 
 test('sendToAuthorizedUser rejects unpaired bridge and empty text', async () => {
@@ -73,10 +85,22 @@ test('sendToAuthorizedUser requires explicit recipient for non-weixin agents wit
   )
 })
 
+test('sendToAuthorizedUser requires cached delivery context for proactive sends', async () => {
+  const bridge = createBridge()
+  delete bridge.state.deliveryContexts['owner-abcdefgh']
+  await assert.rejects(
+    () => sendToAuthorizedUser(bridge, { agentId: 'agent-owner', text: 'hello' }),
+    /context_token/,
+  )
+})
+
 test('sendToAuthorizedUser delivers to sole authorized user for web agents', async () => {
   const bridge = createBridge()
   bridge.state.settings.allowedUsers = ['owner-abcdefgh']
   bridge.state.settings.ownerUserId = 'owner-abcdefgh'
+  bridge.state.deliveryContexts = {
+    'owner-abcdefgh': { contextToken: 'ctx-solo', updatedAt: '2026-08-26T00:00:00.000Z' },
+  }
 
   const result = await sendToAuthorizedUser(bridge, {
     agentId: 'web-agent',

@@ -18,7 +18,7 @@ function createMockClient(sequence) {
   let pollIndex = 0
   return {
     async getQrCode() {
-      return { qrcode: 'qr-token', qrcode_img_content: 'qr-content' }
+      return { qrcode: 'qr-token', qrcode_img_content: 'https://weixin.qq.com/x/test-pairing' }
     },
     async pollQrStatus() {
       const next = sequence[pollIndex]
@@ -57,7 +57,7 @@ test('QrProxyServer registers host routes without binding a port', async () => {
   assert.equal(routes.length, 0)
 })
 
-test('WxPairingSession uses webServer routes when provided', async () => {
+test('WxPairingSession returns Tencent pairingUrl without local QR HTTP by default', async () => {
   const root = await mkdtemp(join(tmpdir(), 'wx-host-'))
   const routes = []
   const webServer = {
@@ -79,8 +79,40 @@ test('WxPairingSession uses webServer routes when provided', async () => {
   const session = new WxPairingSession(options, {
     client: createMockClient([{ status: 'wait' }]),
   })
+  const snapshot = await session.start()
+  assert.equal(routes.length, 0)
+  assert.equal(snapshot.pairingUrl, 'https://weixin.qq.com/x/test-pairing')
+  assert.match(snapshot.message, /腾讯配对链接/)
+  await session.cancel()
+  await rm(root, { recursive: true, force: true })
+})
+
+test('WxPairingSession serves local QR HTTP only when serveQrHttp is enabled', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'wx-host-'))
+  const routes = []
+  const webServer = {
+    host: '127.0.0.1',
+    port: 3080,
+    register(route) {
+      routes.push(route)
+      return () => {
+        const index = routes.indexOf(route)
+        if (index >= 0) routes.splice(index, 1)
+      }
+    },
+  }
+  const options = resolvePairingOptions({
+    stateDir: join(root, 'state'),
+    dshHome: root,
+    webServer,
+    serveQrHttp: true,
+  })
+  const session = new WxPairingSession(options, {
+    client: createMockClient([{ status: 'wait' }]),
+  })
   await session.start()
   assert.equal(routes.length, 2)
+  assert.equal(session.pairingUrl, 'https://weixin.qq.com/x/test-pairing')
   assert.equal(session.pairingPageUrlLocal, 'http://127.0.0.1:3080/api/wx-clawbot/pairing')
   assert.equal(session.pairingImageUrlLocal, 'http://127.0.0.1:3080/api/wx-clawbot/pairing-qr.png')
   await session.cancel()
@@ -111,7 +143,7 @@ test('WxPairingSession completes pairing and persists credentials', async () => 
   const session = new WxPairingSession(options, { client })
   await session.start()
   assert.equal(session.phase, 'waiting_scan')
-  assert.ok(session.pairingPageUrls.length > 0)
+  assert.equal(session.pairingUrl, 'https://weixin.qq.com/x/test-pairing')
 
   await session.step({})
   assert.equal(session.phase, 'scanned')

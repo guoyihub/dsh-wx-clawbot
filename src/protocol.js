@@ -152,6 +152,9 @@ export class IlinkClient {
       if (response.ret != null && response.ret !== 0) {
         throw new Error(`sendmessage ret=${response.ret}: ${response.errmsg ?? 'unknown error'}`)
       }
+      if (response.errcode != null && response.errcode !== 0) {
+        throw new Error(`sendmessage errcode=${response.errcode}: ${response.errmsg ?? 'unknown error'}`)
+      }
       return response
     })
   }

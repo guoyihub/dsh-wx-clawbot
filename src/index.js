@@ -31,6 +31,7 @@ import { MAX_AUDIT_EVENTS, MAX_PEER_SESSIONS, StateStore, createPeerState } from
 import { elapsedText, formatDoctorReport, formatQueueReport, formatTaskReport } from './runtime-status.js'
 import { MAX_OUTBOX_MESSAGES, outboxEntryDue, outboxRetryDelay } from './outbox.js'
 import { sendToAuthorizedUser } from './outbound-send.js'
+import { rememberDeliveryContext } from './delivery-context.js'
 import { DEFAULT_CREDENTIAL_REF, PLUGIN_NAME, SESSION_ID_PREFIX } from './constants.js'
 import { toLosslessToolOutput } from './tool-output.js'
 import { registerWxConfigureTool } from './tool-wx-configure.js'
@@ -241,6 +242,7 @@ export class DshWeixinBridge {
       permissionPreset: this.config.permissionPreset,
       webServer: this.ctx.get?.('webServer'),
       mobilePublicBaseUrl: await readMobilePublicBaseUrl(dshHome),
+      serveQrHttp: false,
     }
   }
 
@@ -312,6 +314,7 @@ export class DshWeixinBridge {
         needsVerifyCode: session?.needsVerifyCode ?? false,
         pairingPageUrls: session?.pairingPageUrls ?? [],
         pairingImageUrls: session?.pairingImageUrls ?? [],
+        ...(session?.pairingUrl ? { pairingUrl: session.pairingUrl } : {}),
         ...(session?.pairingPageUrlLocal ? { pairingPageUrlLocal: session.pairingPageUrlLocal } : {}),
         ...(session?.pairingPageUrlMobile ? { pairingPageUrlMobile: session.pairingPageUrlMobile } : {}),
         ...(session?.pairingImageUrlLocal ? { pairingImageUrlLocal: session.pairingImageUrlLocal } : {}),
@@ -410,6 +413,23 @@ export class DshWeixinBridge {
 
   allowed(from) {
     return this.state.settings.allowedUsers.includes(from)
+  }
+
+  async ensureChannelReady() {
+    if (!this.state) this.state = await this.store.load()
+    if (!this.state.account?.accountId) {
+      throw new Error('微信通道尚未配对；请先运行 wx_configure start_pairing')
+    }
+    if (!this.pollTask) await this.activateChannel()
+  }
+
+  rememberInboundDeliveryContext(from, message) {
+    this.state.deliveryContexts = rememberDeliveryContext(
+      this.state.deliveryContexts,
+      from,
+      message.context_token,
+      message.run_id,
+    )
   }
 
   isOwner(from) {
@@ -533,6 +553,7 @@ export class DshWeixinBridge {
             else this.ctx.logger.warn(`wx-clawbot: dropped message from unauthorized sender ${from}`)
             continue
           }
+          this.rememberInboundDeliveryContext(from, message)
           if (!text) continue
           this.health.lastInboundAt = new Date().toISOString()
           if (isFastCommand(command)) this.runFast(message)
@@ -713,9 +734,12 @@ export class DshWeixinBridge {
       throw new Error(`outbound queue is full (${this.state.outbox.length}/${MAX_OUTBOX_MESSAGES})`)
     }
     const createdAt = new Date().toISOString()
+    const entryIds = []
     for (const chunk of chunks) {
+      const id = randomUUID()
+      entryIds.push(id)
       this.state.outbox.push({
-        id: randomUUID(),
+        id,
         to: from,
         text: chunk,
         createdAt,
@@ -726,16 +750,23 @@ export class DshWeixinBridge {
       })
     }
     await this.store.save(this.state)
-    await this.flushOutbox()
+    await this.flushOutbox({ throwOnFailure: true })
+    const pending = entryIds.filter(id => this.state.outbox.some(entry => entry.id === id))
+    if (pending.length) {
+      const failed = this.state.outbox.find(entry => entry.id === pending[0])
+      throw new Error(`微信消息发送失败：${failed?.lastError ?? '消息仍在待发队列中'}`)
+    }
   }
 
-  flushOutbox() {
-    const run = this.outboxFlush.then(() => this.drainOutbox())
+  /** @param {{ throwOnFailure?: boolean }} [options] */
+  flushOutbox(options = {}) {
+    const run = this.outboxFlush.then(() => this.drainOutbox(options))
     this.outboxFlush = run.catch(() => {})
     return run
   }
 
-  async drainOutbox() {
+  /** @param {{ throwOnFailure?: boolean }} [options] */
+  async drainOutbox(options = {}) {
     while (this.state.outbox.length && !this.controller.signal.aborted) {
       const entry = this.state.outbox[0]
       if (!outboxEntryDue(entry)) return
@@ -758,6 +789,7 @@ export class DshWeixinBridge {
         entry.nextAttemptAt = new Date(Date.now() + outboxRetryDelay(entry.attempts)).toISOString()
         await this.store.save(this.state)
         this.ctx.logger.warn(`wx-clawbot: outbound message queued for retry: ${entry.lastError}`)
+        if (options.throwOnFailure) throw error
         return
       }
     }
@@ -774,7 +806,10 @@ export class DshWeixinBridge {
 
   /** @param {{ agentId: string, reference?: string, text: string, signal?: AbortSignal }} input */
   sendToUser(input) {
-    return sendToAuthorizedUser(this, input)
+    return sendToAuthorizedUser({
+      ...this,
+      ensureReady: () => this.ensureChannelReady(),
+    }, input)
   }
 
   async processFastMessage(message) {

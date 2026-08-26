@@ -100,17 +100,17 @@ Agent 调用内置工具 **`wx_configure`** 自动完成：
 | 步骤 | 工具动作 | 说明 |
 |------|----------|------|
 | 1 | `status` | 检查是否已配对 |
-| 2 | `start_pairing` | 生成二维码与完整配对链接（`pairingPageUrlLocal` 本机 / `pairingPageUrlMobile` 手机） |
+| 2 | `start_pairing` | 返回腾讯 `pairingUrl`（微信内打开即可扫码）；CLI 可选本地 QR 页 |
 | 3 | `pair_step` | 轮询扫码进度；若需数字码则传入 `verify_code` |
 | 4 | 完成 | 凭据写入 `$DSH_HOME/.credentials.yaml`，通道自动激活 |
 
-配对页由工具直接给出完整 URL，无需手动拼接域名与路径：
+Host / Agent 配对优先把腾讯链接交给用户，无需 `127.0.0.1` 图片代理：
 
 | 字段 | 说明 |
 |------|------|
-| `pairingPageUrlLocal` | 本机打开，如 `http://127.0.0.1:<Host端口>/api/wx-clawbot/pairing` |
-| `pairingPageUrlMobile` | 手机/隧道打开（读取 DSH Mobile 的 `mobilePublicBaseUrl`），如 `https://dshmobilexxxxx/api/wx-clawbot/pairing` |
-| CLI 独立 `wx-clawbot setup` | 终端输出的 `http://<host>:3081/...` 等绝对 URL |
+| `pairingUrl` | 腾讯返回的 `qrcode_img_content`，如 `https://weixin.qq.com/x/...`；**在微信内打开即可扫码** |
+| `pairingPageUrlLocal` / `pairingImageUrlLocal` | 仅 CLI `wx-clawbot setup` 启用本地 QR HTTP 时出现 |
+| `pairingPageUrlMobile` | 同上，且配置了 `mobilePublicBaseUrl` 时 |
 
 ### 验证
 

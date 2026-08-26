@@ -1,13 +1,19 @@
 import { PLUGIN_NAME } from './constants.js'
 import { maskUserId, resolveOutboundRecipient } from './control.js'
+import { resolveDeliveryContext } from './delivery-context.js'
 import { splitText } from './protocol.js'
 
 /**
  * @param {{
- *   state?: { account?: { accountId?: string }, settings?: { allowedUsers?: string[], maxReplyChars?: number } },
+ *   state?: {
+ *     account?: { accountId?: string },
+ *     settings?: { allowedUsers?: string[], maxReplyChars?: number },
+ *     deliveryContexts?: Record<string, { contextToken: string, runId?: string, updatedAt: string }>,
+ *   },
  *   agentOwners: Map<string, string>,
  *   allowed: (userId: string) => boolean,
- *   send: (userId: string, text: string) => Promise<void>,
+ *   ensureReady?: () => Promise<void>,
+ *   send: (userId: string, text: string, contextToken?: string, runId?: string) => Promise<void>,
  * }} bridge
  * @param {{ agentId: string, reference?: string, text: string, signal?: AbortSignal }} input
  * @returns {Promise<{ sent: true, to: string, chunks: number }>}
@@ -18,6 +24,7 @@ export async function sendToAuthorizedUser(bridge, input) {
   }
   if (input.signal?.aborted) throw new Error('工具调用已取消')
   if (!bridge.state?.settings) throw new Error('微信通道尚未就绪')
+  await bridge.ensureReady?.()
   const userId = resolveOutboundRecipient(
     bridge.state.settings,
     bridge.agentOwners,
@@ -31,6 +38,7 @@ export async function sendToAuthorizedUser(bridge, input) {
   if (!trimmed) throw new Error('消息内容不能为空')
   const chunks = splitText(trimmed, bridge.state.settings.maxReplyChars ?? 3800)
   if (!chunks.length) throw new Error('消息内容不能为空')
-  await bridge.send(userId, trimmed)
+  const delivery = resolveDeliveryContext(bridge.state.deliveryContexts, userId)
+  await bridge.send(userId, trimmed, delivery.contextToken, delivery.runId)
   return { sent: true, to: userId, chunks: chunks.length }
 }

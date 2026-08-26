@@ -27,6 +27,7 @@ import { QrProxyServer, pairingUrlFields } from './qr-proxy.js'
  * @property {string | undefined} [qrFile]
  * @property {import('./qr-proxy.js').QrProxyServer['webServer']} [webServer]
  * @property {string | undefined} [mobilePublicBaseUrl]
+ * @property {boolean} [serveQrHttp]
  */
 
 /**
@@ -74,6 +75,7 @@ export function resolvePairingOptions(overrides = {}, defaults = {}) {
     qrFile: overrides.qrFile ? resolve(overrides.qrFile) : undefined,
     webServer: overrides.webServer ?? defaults.webServer,
     mobilePublicBaseUrl: overrides.mobilePublicBaseUrl ?? defaults.mobilePublicBaseUrl,
+    serveQrHttp: overrides.serveQrHttp ?? defaults.serveQrHttp ?? false,
   }
 }
 
@@ -124,6 +126,7 @@ export async function applyPairingSuccess(response, options, store) {
   state.syncBuf = ''
   state.processed = []
   state.peers = {}
+  state.deliveryContexts = {}
   state.settings.allowedUsers = [response.ilink_user_id]
   state.settings.ownerUserId = response.ilink_user_id
   state.settings.agentCwd = options.agentCwd
@@ -147,6 +150,7 @@ export async function disconnectPairing(options) {
   state.syncBuf = ''
   state.processed = []
   state.peers = {}
+  state.deliveryContexts = {}
   state.settings.allowedUsers = []
   state.settings.ownerUserId = null
   await store.save(state)
@@ -201,6 +205,8 @@ export class WxPairingSession {
     /** @type {string | undefined} */
     this.pairingImageUrlMobile = undefined
     this.terminalQr = ''
+    /** @type {string | null} */
+    this.pairingUrl = null
     this.liteUrl = null
     this.error = null
     this.result = null
@@ -232,43 +238,60 @@ export class WxPairingSession {
       needsVerifyCode: this.phase === 'need_verify_code',
       paired: this.phase === 'confirmed',
       ...(this.terminalQr ? { terminalQr: this.terminalQr } : {}),
+      ...(this.pairingUrl ? { pairingUrl: this.pairingUrl } : {}),
       ...(this.liteUrl ? { liteUrl: this.liteUrl } : {}),
       ...(this.result?.accountId ? { accountId: this.result.accountId } : {}),
       ...(typeof this.error === 'string' && this.error ? { error: this.error } : {}),
     }
   }
 
+  /**
+   * @param {string} qrContent
+   */
+  async applyTencentPairingUrl(qrContent) {
+    this.pairingUrl = qrContent
+    this.liteUrl = qrContent
+    this.terminalQr = await QRCode.toString(qrContent, { type: 'terminal', small: true })
+    if (this.options.qrFile) {
+      const png = await QRCode.toBuffer(qrContent, { width: 512, margin: 2, type: 'png' })
+      await writeFile(this.options.qrFile, png)
+    }
+  }
+
   async start() {
     if (this.active) throw new Error('已有进行中的微信配对会话')
-    this.proxy = new QrProxyServer({
-      webServer: this.options.webServer,
-      mobilePublicBaseUrl: this.options.mobilePublicBaseUrl,
-      port: this.options.qrPort,
-      bind: this.options.qrBind,
-      baseUrl: this.options.qrBaseUrl,
-    })
-    await this.proxy.start().catch(error => {
-      if (!this.options.webServer && error && typeof error === 'object' && 'code' in error && error.code === 'EADDRINUSE') {
-        throw new Error(`端口 ${this.options.qrPort} 已被占用；请指定其他 qr_port，或在 Host 内配对以复用 webServer 端口`)
-      }
-      throw error
-    })
+    if (this.options.serveQrHttp) {
+      this.proxy = new QrProxyServer({
+        webServer: this.options.webServer,
+        mobilePublicBaseUrl: this.options.mobilePublicBaseUrl,
+        port: this.options.qrPort,
+        bind: this.options.qrBind,
+        baseUrl: this.options.qrBaseUrl,
+      })
+      await this.proxy.start().catch(error => {
+        if (!this.options.webServer && error && typeof error === 'object' && 'code' in error && error.code === 'EADDRINUSE') {
+          throw new Error(`端口 ${this.options.qrPort} 已被占用；请指定其他 qr_port`)
+        }
+        throw error
+      })
+    }
     this.qr = await this.client.getQrCode()
     if (!this.qr?.qrcode || !this.qr?.qrcode_img_content) {
       await this.cleanupProxy()
       throw new Error('微信网关没有返回有效二维码')
     }
-    const published = await publishQrToProxy(
-      this.proxy,
-      this.qr.qrcode_img_content,
-      this.qr.qrcode_img_content,
-      this.options.qrFile,
-    )
-    this.applyPublishedPairingUrls(published)
-    this.terminalQr = published.terminalQr
-    this.liteUrl = published.liteUrl
+    await this.applyTencentPairingUrl(this.qr.qrcode_img_content)
+    if (this.proxy) {
+      const published = await publishQrToProxy(
+        this.proxy,
+        this.qr.qrcode_img_content,
+        this.qr.qrcode_img_content,
+        undefined,
+      )
+      this.applyPublishedPairingUrls(published)
+    }
     this.phase = 'waiting_scan'
-    this.message = '请让用户直接打开下方完整配对链接（本机或手机）；扫码后再次调用 pair_step。'
+    this.message = '请让用户在微信内打开下方腾讯配对链接；完成后再次调用 pair_step。'
     return this.snapshot()
   }
 
@@ -336,17 +359,18 @@ export class WxPairingSession {
           break
         }
         {
-          const published = await publishQrToProxy(
-            this.proxy,
-            this.qr.qrcode_img_content,
-            this.qr.qrcode_img_content,
-            this.options.qrFile,
-          )
-          this.applyPublishedPairingUrls(published)
-          this.terminalQr = published.terminalQr
-          this.liteUrl = published.liteUrl
+          await this.applyTencentPairingUrl(this.qr.qrcode_img_content)
+          if (this.proxy) {
+            const published = await publishQrToProxy(
+              this.proxy,
+              this.qr.qrcode_img_content,
+              this.qr.qrcode_img_content,
+              undefined,
+            )
+            this.applyPublishedPairingUrls(published)
+          }
           this.phase = 'waiting_scan'
-          this.message = '二维码已过期并已刷新；请让用户扫描新的二维码后再次调用 pair_step。'
+          this.message = '二维码已过期并已刷新；请让用户在微信内打开新的腾讯配对链接后再次调用 pair_step。'
         }
         break
       case 'confirmed': {

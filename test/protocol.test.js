@@ -46,6 +46,16 @@ test('sendText preserves context and run identifiers', async () => {
   assert.equal(body.msg.item_list[0].text_item.text, 'done')
 })
 
+test('sendText rejects non-zero errcode responses', async () => {
+  const client = new IlinkClient(async () => new Response(JSON.stringify({ ret: 0, errcode: -2, errmsg: 'throttled' })))
+  await assert.rejects(
+    () => client.sendText({
+      baseUrl: 'https://example.test', token: 'token', to: 'user', text: 'done', contextToken: 'context',
+    }),
+    /errcode=-2/,
+  )
+})
+
 test('message helpers extract transcripts, create stable keys, and split Unicode safely', () => {
   assert.equal(extractInboundText({ item_list: [{ type: 3, voice_item: { text: '  语音文本 ' } }] }), '语音文本')
   assert.equal(inboundMessageKey({ message_id: 42 }), 'id:42')

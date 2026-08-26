@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
+import { normalizeDeliveryContexts } from './delivery-context.js'
 import { MAX_OUTBOX_MESSAGES } from './outbox.js'
 
 export const STATE_VERSION = 1
@@ -150,6 +151,7 @@ export function createDefaultState(defaults = {}) {
     syncBuf: '',
     processed: [],
     outbox: [],
+    deliveryContexts: {},
     audit: [],
     peers: {},
     settings: {
@@ -204,6 +206,7 @@ export function normalizeState(value, defaults = {}) {
     syncBuf: typeof value.syncBuf === 'string' ? value.syncBuf : '',
     processed: Array.isArray(value.processed) ? value.processed.filter(item => typeof item === 'string').slice(-500) : [],
     outbox,
+    deliveryContexts: normalizeDeliveryContexts(value.deliveryContexts),
     audit,
     peers,
     settings: normalizedSettings,

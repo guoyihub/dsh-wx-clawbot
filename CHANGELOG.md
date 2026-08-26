@@ -2,6 +2,22 @@
 
 All notable changes to this project are documented here.
 
+## 0.5.12 - 2026-08-26
+
+- Return Tencent `qrcode_img_content` as `pairingUrl` for `wx_configure` pairing;
+  users open it in WeChat instead of relying on `127.0.0.1` QR image proxies.
+- Skip Host QR HTTP routes by default; CLI `wx-clawbot setup` still enables local
+  QR pages when needed.
+
+## 0.5.11 - 2026-08-26
+
+- Fix proactive `wx_send` delivery by caching each authorized user's latest inbound
+  `context_token` (and `run_id` when present) and attaching it to outbound sends.
+- Fail `wx_send` with actionable guidance when no cached conversation context exists
+  yet, instead of reporting success while WeChat silently drops the message.
+- Treat non-zero `sendmessage errcode` as delivery failure and propagate immediate
+  outbound send errors back to the tool caller.
+
 ## 0.5.10 - 2026-08-26
 
 - Log inbound Weixin text with `source: { kind: 'user' }` so DSH Web/Mobile
