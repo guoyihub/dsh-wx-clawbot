@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here.
 
+## 0.5.10 - 2026-08-26
+
+- Log inbound Weixin text with `source: { kind: 'user' }` so DSH Web/Mobile
+  shows WeChat prompts as normal user bubbles instead of collapsed context
+  injection rows.
+
 ## 0.5.9 - 2026-08-25
 
 - Restore missing `registerWxSendTool` import that broke Host plugin load in

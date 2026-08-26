@@ -798,7 +798,7 @@ export class DshWeixinBridge {
       if (!agent || agent.status !== 'running') return this.reply(message, '当前没有运行中的任务，直接发送内容可开始新任务。')
       agent.steer(createUserMessage({
         content: [{ type: 'text', text: command.argument }],
-        source: { kind: 'plugin', plugin: name },
+        source: { kind: 'user' },
       }))
       return this.reply(message, '已将修正发送给当前任务。')
     }
@@ -1164,7 +1164,7 @@ export class DshWeixinBridge {
       const firstSeq = agent.session.seq
       agent.followup(createUserMessage({
         content: [{ type: 'text', text }],
-        source: { kind: 'plugin', plugin: name },
+        source: { kind: 'user' },
       }))
       task.state = 'running'
       if (this.config.progressIntervalSeconds > 0) {
