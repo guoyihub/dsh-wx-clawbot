@@ -1,6 +1,6 @@
 {
   "name": "dsh-wx-clawbot",
-  "version": "0.5.13",
+  "version": "1.0.0",
   "license": "MIT",
   "description": "DSH 微信 ClawBot/iLink 插件，支持对话配对与 Agent 工具",
   "author": "zp-home (https://github.com/zp-home)",

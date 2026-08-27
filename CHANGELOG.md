@@ -2,6 +2,21 @@
 
 All notable changes to this project are documented here.
 
+## 1.0.0 - 2026-08-27
+
+First stable release. Documentation overhaul and community recognition milestone.
+
+### Highlights
+
+- **对话式配对**：Host 对话中通过 `wx_configure` 完成 status → start_pairing → pair_step 全流程；优先使用腾讯 `pairingUrl`，微信内打开即可扫码。
+- **主动推送**：`wx_send` 向已授权用户推送任务通知与绑定确认；缓存 inbound `context_token`，失败时返回可操作建议。
+- **企业级文档**：[微信网关接入与使用指南](docs/GUIDE.zh.md) 覆盖配对四步、验证、故障排查；README 重构为开源产品级结构。
+- **社区认可**：获 [Linux.do](https://linux.do) 社区认可与支持。
+
+### Since 0.5.13
+
+No functional changes beyond documentation and version bump. See prior entries for feature history.
+
 ## 0.5.13 - 2026-08-26
 
 - Fix `wx_send` failing with `bridge.allowed is not a function` after passing a

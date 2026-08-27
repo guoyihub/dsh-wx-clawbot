@@ -1,6 +1,6 @@
 # DSH Weixin ClawBot
 
-[中文](../README.md) | [Command reference](COMMANDS.md) | [Architecture and compatibility](ARCHITECTURE.md) | [Security policy](../SECURITY.md)
+[中文](../README.md) | [Setup guide (中文)](GUIDE.zh.md) | [Command reference](COMMANDS.md) | [Architecture and compatibility](ARCHITECTURE.md) | [Security policy](../SECURITY.md)
 
 An independent DeepSeek Harness (DSH) Host Bundle that connects Tencent's
 official Weixin ClawBot/iLink channel directly to DSH. After pairing, an
